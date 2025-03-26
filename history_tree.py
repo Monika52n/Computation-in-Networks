@@ -43,4 +43,4 @@ class HistoryTree:
         plt.show()
 
     def get_max_height(self):
-        return 2
+        return nx.dag_longest_path_length(self.G, 'root') if self.G.nodes else 0

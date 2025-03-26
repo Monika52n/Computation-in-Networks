@@ -12,13 +12,16 @@ class Agent:
     def output(self, message):
         print(f"Agent output: {message}")
 
-    def send_to_all_neighbors(self, message):
-        # Simulate sending message to all neighbors (in a real case, this would
-        # send the message to all connected agents in the network)
-        return message
+    def send_to_neighbor(self):
+        return self.myHT
 
     def receive_from_all_neighbors(self, receivedMessages):
         self.receivedMessages = receivedMessages
+
+    def receive_from_neighbor(self, receivedMessage):
+        if not hasattr(self, "receivedMessages"):
+            self.receivedMessages = []
+        self.receivedMessages.append(receivedMessage)
 
     def chop(self, history_tree):
         # Chop level L0 from the history tree as described in the algorithm
@@ -29,6 +32,7 @@ class Agent:
         return {}  # Dummy return, implement frequency computation logic
 
     def main(self):
+        print(f"Length {len(self.receivedMessages)}")
         if self.myHT.get_max_height() > 2 * self.n - 2:
             self.myHT = HistoryTree(self.input_value)
         

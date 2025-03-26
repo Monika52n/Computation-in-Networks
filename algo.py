@@ -1,18 +1,57 @@
 from agent import Agent
 from history_tree import HistoryTree
+import networkx as nx
+import random
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
 
-# Simulating the agents in the network
-def run_simulation(n, agents_inputs):
-    agents = [Agent(n, input_value) for input_value in agents_inputs]
-    for agent in agents:
-        agent.send_to_all_neighbors("message")
-    for agent in agents:
-        agent.receive_from_all_neighbors([HistoryTree(agent.input())])
-    for agent in agents:
-        agent.main()
+class SimulationApp:
+    def __init__(self, root, n, agents_inputs):
+        self.root = root
+        self.n = n
+        self.agents_inputs = agents_inputs
+        self.current_round = 0
+        self.agents = [Agent(n, input_value) for input_value in agents_inputs]
+
+        self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasTkAgg(self.fig, master=root)
+        self.canvas.get_tk_widget().pack()
+
+        self.next_button = tk.Button(root, text="Next round", command=self.run_next_round)
+        self.next_button.pack()
+
+        self.run_next_round()
+
+    def generate_dynamic_graph(self):
+        return nx.erdos_renyi_graph(self.n, p=0.5)
+
+    def draw_graph(self, G):
+        self.ax.clear()
+        nx.draw(G, ax=self.ax, with_labels=True, node_color="lightblue", edge_color="gray", node_size=800)
+        self.canvas.draw()
+
+    def run_next_round(self):
+        print(f"Round {self.current_round + 1}")
+        G = self.generate_dynamic_graph()
+        self.draw_graph(G)
+
+        for i, agent in enumerate(self.agents):
+            neighbors = list(G.neighbors(i))
+            for neighbor in neighbors:
+                self.agents[neighbor].receive_from_neighbor(agent.send_to_neighbor())
+
+        for agent in self.agents:
+            agent.main()
+
+        self.current_round += 1
 
 
-# Example: running the simulation with 3 agents
-agents_inputs = [1, 0, 0]  # Example input for 3 agents
-n = len(agents_inputs)
-run_simulation(n, agents_inputs)
+if __name__ == "__main__":
+    agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
+    n = len(agents_inputs)
+
+    root = tk.Tk()
+    root.title("Dinamukus Hálózat Szimuláció")
+    app = SimulationApp(root, n, agents_inputs)
+    root.mainloop()
