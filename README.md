@@ -1,4 +1,4 @@
-algo.py: algoritmus (ez a fájl szerintem kész van)
+algo.py: algoritmus (ez a fájl szerintem kész van) -> kivéve az, higy végtelen ciklusban van, úgy kell lelőni
 
 agent.py: egy csúcs, és minden csúcs minden körben meghívja a main-t magára
 
