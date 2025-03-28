@@ -5,6 +5,7 @@ class Agent:
         self.n = n  # Number of agents in the network
         self.input_value = input_value  # Agent's input
         self.myHT = HistoryTree(input_value)  # Current view of the history tree
+        self.receivedMessages = []
 
     def input(self):
         return self.input_value
@@ -15,12 +16,7 @@ class Agent:
     def send_to_neighbor(self):
         return self.myHT
 
-    def receive_from_all_neighbors(self, receivedMessages):
-        self.receivedMessages = receivedMessages
-
     def receive_from_neighbor(self, receivedMessage):
-        if not hasattr(self, "receivedMessages"):
-            self.receivedMessages = []
         self.receivedMessages.append(receivedMessage)
 
     def chop(self, history_tree):
@@ -54,10 +50,12 @@ class Agent:
 
             # Add a red edge (simulated)
             # ide kell valami ilyesmi: self.myHT.add_red_edge(HT.get_bottom(), self.myHT.get_bottom())
+            # amúgy ez nem is ide kéne, hanem a merge közben megtenni
 
         if self.myHT.get_max_height() == 2 * self.n - 1:
             self.chop(self.myHT)
 
+        self.receivedMessages = []
         if True: #"counting_level" in self.myHT:
             self.output(self.compute_frequencies(self.myHT))
         else:

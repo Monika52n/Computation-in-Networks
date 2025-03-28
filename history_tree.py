@@ -11,11 +11,19 @@ class HistoryTree:
     def create_initial_tree(self, input):
         # Létrehozza az alap history tree-t, két csúccsal: root és Input
         self.G.add_node('root', label='Root')
-        self.G.add_node('Input', label=input)
-        self.G.add_edge('root', 'Input')
+        self.G.add_node('bottom', label=input)
+        self.G.add_edge('root', 'bottom', label='black')
+
+    def get_tree(self):
+        return self.G
     
     def add_red_edge(self, node_from, node_to):
         self.G.add_edge(node_from, node_to)
+
+    def merge_trees(self, mergeHT):
+        tree = mergeHT.get_tree()
+        
+        pass
 
     def add_bottom(self, input):
         pass

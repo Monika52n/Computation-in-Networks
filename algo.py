@@ -52,6 +52,6 @@ if __name__ == "__main__":
     n = len(agents_inputs)
 
     root = tk.Tk()
-    root.title("Dinamukus Hálózat Szimuláció")
+    root.title("Universal self-stabilizing finite-state algorithm")
     app = SimulationApp(root, n, agents_inputs)
     root.mainloop()
