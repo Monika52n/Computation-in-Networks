@@ -1,4 +1,5 @@
 from history_tree import HistoryTree
+from collections import defaultdict
 
 class Agent:
     def __init__(self, n, input_value):
@@ -24,8 +25,36 @@ class Agent:
         history_tree.chop()
 
     def compute_frequencies(self, history_tree):
-        # Compute frequencies from the history tree
-        return {}  # Dummy return, implement frequency computation logic
+        """
+        Kiszámítja az egyes csúcsok címkéinek relatív előfordulási gyakoriságát a történeti fában.
+
+        Paraméter:
+            history_tree: A HistoryTree objektum, amely tartalmazza a gráfot.
+
+        Visszatérési érték:
+            Egy szótár, ahol a kulcsok a címkék, az értékek pedig a relatív gyakoriságok.
+        """
+        from collections import defaultdict
+
+        label_counts = defaultdict(int)
+        total_nodes = 0
+
+        # Címkék megszámlálása
+        for node in history_tree.G.nodes:
+            label = history_tree.G.nodes[node].get('label', None)
+            if label is not None:
+                label_counts[label] += 1
+                total_nodes += 1
+
+        # Ha nincs csomópont, térjünk vissza üres szótárral
+        if total_nodes == 0:
+            return {}
+
+        # Relatív gyakoriságok kiszámítása
+        result = {label: count / total_nodes for label, count in label_counts.items()}
+
+        return result
+
 
     def main(self):
         print(f"Length {len(self.receivedMessages)}")
@@ -64,3 +93,31 @@ class Agent:
     def merge_trees(self, tree1, tree2):
         # This function will merge two history trees (simplified)
         return tree1  # Simplified, implement tree merging logic
+
+
+def test_compute_frequencies():
+    ht = HistoryTree("Root")
+
+    ht.G.add_nodes_from([
+        ("A", {"label": "0", "level": 0}),
+        ("B", {"label": "1", "level": 0}),
+        ("C", {"label": "1", "level": 1}),
+        ("D", {"label": "0", "level": 1}),
+        ("E", {"label": "1", "level": 2}),
+    ])
+
+    ht.G.add_edges_from([
+        ("Root", "A"), 
+        ("Root", "B"), 
+        ("A", "C"), 
+        ("A", "D"), 
+        ("C", "E")
+    ])
+
+    agent = Agent(n=5, input_value="Root")
+    frequencies = agent.compute_frequencies(ht)
+    print(frequencies)
+
+
+# Teszt futtatása
+test_compute_frequencies()
