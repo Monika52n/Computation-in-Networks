@@ -34,4 +34,4 @@ fig = plt.figure()
 draw_graph()
 plt.show()
 
-root.mainloop()
+root.mainloop() 
