@@ -100,10 +100,20 @@ class HistoryTree:
 
         if other_bottom in node_map:
             mapped_bottom = node_map[other_bottom]
-            for child in self.G.successors(this_bottom):
-                self.red_edges[(mapped_bottom, child)] += 1
-                self.G.add_edge(mapped_bottom, child, color='red', multiplicity=self.red_edges[(mapped_bottom, child)])
-        
+            new_bottom_node = f"{this_bottom}_plus_{mapped_bottom}"
+            this_node = self.G.nodes[this_bottom]
+
+            #Add new node that is the same as old bottom node, and is the child of the old bottom node (black edge)
+            self.G.add_nodes_from([
+                (new_bottom_node, {'label': this_node['label'], 'level': this_node['level'] + 1})
+            ])
+            self.G.add_edge(this_bottom, new_bottom_node, color='black')
+            self.bottom_node = new_bottom_node
+
+            #Add red edge from mapped bottom node to new bottom node
+            self.red_edges[(mapped_bottom, new_bottom_node)] += 1
+            self.G.add_edge(mapped_bottom, new_bottom_node, color='red', multiplicity=self.red_edges[(mapped_bottom, new_bottom_node)])
+
         return node_map
 
     def get_path_to_root(graph, node):
@@ -339,7 +349,7 @@ class HistoryTree:
     def add_bottom(self, input):
         pass
 
-    def get_bottom():
+    def get_bottom(self):
         pass
 
     def compute_frequencies(self):
@@ -379,9 +389,9 @@ def test_merge_trees():
         ("B_0", "D_1", {'color': 'black'}),
         ("B_0", "E_1", {'color': 'black'})
     ])
-    ht1.bottom_node = "B_0"
+    ht1.bottom_node = "E_1"
     ht1.current_level = 1
-    # ht1.draw_tree()
+    ht1.draw_tree()
     
     ht2 = HistoryTree("Root")
     ht2.G.add_nodes_from([
@@ -399,15 +409,15 @@ def test_merge_trees():
         ("B_3", "D_3", {'color': 'black'}),
         ("B_3", "E_3", {'color': 'black'})
     ])
-    ht2.bottom_node = "B_3"
+    ht2.bottom_node = "D_3"
     ht2.current_level = 1
-    # ht2.draw_tree()
+    ht2.draw_tree()
     
     print("Merging trees...")
     ht1.merge_trees(ht2)
     ht1.draw_tree()
 
-#test_merge_trees()
+test_merge_trees()
 
 def test_complex_merge():
     print("Testing complex merge with deeper trees")

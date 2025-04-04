@@ -75,7 +75,8 @@ class Agent:
                 self.chop(HT)
 
             # Match and merge HT into myHT
-            self.myHT = self.merge_trees(self.myHT, HT)
+            #self.myHT = self.merge_trees(self.myHT, HT)
+            self.myHT = self.myHT.merge_trees(HT)
 
             # Add a red edge (simulated)
             # ide kell valami ilyesmi: self.myHT.add_red_edge(HT.get_bottom(), self.myHT.get_bottom())
@@ -90,9 +91,9 @@ class Agent:
         else:
             self.output([(self.input_value, 100)])
 
-    def merge_trees(self, tree1, tree2):
+    '''def merge_trees(self, tree1, tree2):
         # This function will merge two history trees (simplified)
-        return tree1  # Simplified, implement tree merging logic
+        return tree1  # Simplified, implement tree merging logic'''
 
 
 def test_compute_frequencies():
@@ -120,4 +121,4 @@ def test_compute_frequencies():
 
 
 # Teszt futtatása
-test_compute_frequencies()
+#test_compute_frequencies()
