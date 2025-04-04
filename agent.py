@@ -5,7 +5,8 @@ class Agent:
     def __init__(self, n, input_value):
         self.n = n  # Number of agents in the network
         self.input_value = input_value  # Agent's input
-        self.myHT = HistoryTree(input_value)  # Current view of the history tree
+        #self.myHT = HistoryTree(input_value)  # Current view of the history tree
+        self.myHT = HistoryTree("Root")
         self.receivedMessages = []
 
     def input(self):
@@ -56,10 +57,14 @@ class Agent:
         return result
 
 
-    def main(self):
+    def main(self, neighbors):
         print(f"Length {len(self.receivedMessages)}")
         if self.myHT.get_max_height() > 2 * self.n - 2:
             self.myHT = HistoryTree(self.input_value)
+
+        for neighbor in neighbors:
+            #neighbor.receive_from_neighbor(self.send_to_neighbor()) #sending current ht to all neighbors
+            self.receive_from_neighbor(neighbor.send_to_neighbor()) #receiving ht from all neighbors
         
         allMessages = self.receivedMessages + [self.myHT]
         minHT = min(allMessages, key=lambda ht: ht.get_max_height())
@@ -74,16 +79,12 @@ class Agent:
             while HT.get_max_height() > minHT.get_max_height():
                 self.chop(HT)
 
-            # Match and merge HT into myHT
-            #self.myHT = self.merge_trees(self.myHT, HT)
-            self.myHT = self.myHT.merge_trees(HT)
-
-            # Add a red edge (simulated)
-            # ide kell valami ilyesmi: self.myHT.add_red_edge(HT.get_bottom(), self.myHT.get_bottom())
-            # amúgy ez nem is ide kéne, hanem a merge közben megtenni
+            self.myHT.merge_trees(HT)
 
         if self.myHT.get_max_height() == 2 * self.n - 1:
             self.chop(self.myHT)
+
+        self.myHT.draw_tree()
 
         self.receivedMessages = []
         if True: #"counting_level" in self.myHT:

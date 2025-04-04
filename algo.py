@@ -37,12 +37,8 @@ class SimulationApp:
         self.draw_graph(G)
 
         for i, agent in enumerate(self.agents):
-            neighbors = list(G.neighbors(i))
-            for neighbor in neighbors:
-                self.agents[neighbor].receive_from_neighbor(agent.send_to_neighbor())
-
-        for agent in self.agents:
-            agent.main()
+            neighbors = [self.agents[n] for n in G.neighbors(i)]
+            agent.main(neighbors)
 
         self.current_round += 1
 
