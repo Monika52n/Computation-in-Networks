@@ -43,13 +43,16 @@ class SimulationApp:
             print('-----------------------------------------------------------')
 
         for agent in self.agents:
+            #agent.myHT.draw_tree()
             agent.update_ht()
+            agent.myHT.draw_tree()
 
         self.current_round += 1
 
 
 if __name__ == "__main__":
-    agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
+    #agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
+    agents_inputs = [1, 0, 0, 0]
     n = len(agents_inputs)
 
     root = tk.Tk()

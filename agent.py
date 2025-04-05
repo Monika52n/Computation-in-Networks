@@ -62,8 +62,8 @@ class Agent:
 
     def main(self, neighbors):
         print(f"Length {len(self.receivedMessages)}")
-        if self.myHT.get_max_height() > 2 * self.n - 2:
-            self.myHT = HistoryTree('Root', self.input_value)
+        if self.myHT_new.get_max_height() > 2 * self.n - 2:
+            self.myHT_new = HistoryTree('Root', self.input_value)
 
         for neighbor in neighbors:
             #neighbor.receive_from_neighbor(self.send_to_neighbor()) #sending current ht to all neighbors
@@ -72,21 +72,26 @@ class Agent:
         allMessages = self.receivedMessages + [self.myHT]
         minHT = min(allMessages, key=lambda ht: ht.get_max_height())
 
-        while self.myHT_new.get_max_height() > minHT.get_max_height():
+        while len(self.myHT_new.get_path_to_root(self.myHT_new.bottom_node)) > 2 and self.myHT_new.get_max_height() > minHT.get_max_height():
             self.chop(self.myHT_new)
+
+        print('chop 1')
 
         # Add a new bottom to the history tree
         self.myHT_new.add_bottom(self.input_value)
 
         for HT in self.receivedMessages:
-            while HT.get_max_height() > minHT.get_max_height():
+            while len(HT.get_path_to_root(HT.bottom_node)) > 2 and HT.get_max_height() > minHT.get_max_height():
                 self.chop(HT)
             self.myHT_new.merge_trees(HT)
+
+        #self.myHT_new.draw_tree()
+        print('chop 2')
 
         if self.myHT_new.get_max_height() == 2 * self.n - 1:
             self.chop(self.myHT_new)
 
-        self.myHT_new.draw_tree()
+        print('chop 3')
 
         self.receivedMessages = []
         if True: #"counting_level" in self.myHT:
