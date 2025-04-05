@@ -5,13 +5,19 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    def __init__(self, root_label):
+    def __init__(self, root_label, input_value):
         self.G = nx.DiGraph()
         self.root = root_label
-        self.G.add_node(root_label, label=root_label, level=-1)
+        self.G.add_nodes_from([
+            (root_label, {'label': root_label, 'level': -1}),
+            (f'N_{input_value}', {'label': input_value, 'level': 0})
+        ])
+        self.G.add_edges_from([
+            ('Root', f'N_{input_value}', {'color': 'black'})
+        ])
         self.G.graph['root'] = root_label
-        self.bottom_node = root_label
-        self.current_level = -1
+        self.bottom_node = f'N_{input_value}'
+        self.current_level = 1
         self.red_edges = defaultdict(int)
 
     def get_tree(self):
@@ -19,13 +25,6 @@ class HistoryTree:
 
     # merge 
     def merge_trees(self, other_tree):
-
-        '''print('TEST')
-        print(self)
-        self.draw_tree()
-        print(other_tree)
-        other_tree.draw_tree()'''
-
         node_map = {}
         this_root = self.G.graph['root']
         other_root = other_tree.G.graph['root']
@@ -108,6 +107,7 @@ class HistoryTree:
         if other_tree.bottom_node in node_map:
             mapped_bottom = node_map[other_tree.bottom_node]
             new_bottom_node = f"{self.bottom_node}_plus_{mapped_bottom}"
+            #new_bottom_node = self.bottom_node
             this_bottom_node = self.G.nodes[self.bottom_node]
 
             #Add new node that is the same as old bottom node, and is the child of the old bottom node (black edge)
@@ -116,14 +116,9 @@ class HistoryTree:
             ])
             self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
 
-
             #Add red edge from mapped bottom node to new bottom node
-            '''is_mapped_node_new = False
-            for n in new_nodes:
-                if self.G.nodes[n] == self.G.nodes[mapped_bottom]:
-                    is_mapped_node_new = True
-                    break'''
-
+            #edge_data = self.G.get_edge_data(mapped_bottom, new_bottom_node)
+            #if edge_data is None or edge_data.get('color') == 'red':
             self.red_edges[(mapped_bottom, new_bottom_node)] += 1
             self.G.add_edge(mapped_bottom, new_bottom_node, color='red', multiplicity=self.red_edges[(mapped_bottom, new_bottom_node)])
 
@@ -361,16 +356,22 @@ class HistoryTree:
         sub_view['children'].sort()
         return str(sub_view)
 
-    def add_bottom(self, input):
-        this_node = self.G.nodes[self.bottom_node]
+    def add_bottom(self, input_value):
+        print('input_value: ', input_value)
+        print('bottom: ', self.bottom_node)
+        print('nodes: ', self.G.nodes)
 
-        new_label = f"{self.bottom_node}_plus_{input}"
+        if len(self.G.nodes) == 1:
+            self.__init__('Root', input_value)
+        else:
+            this_node = self.G.nodes[self.bottom_node]
+            new_label = f"{self.bottom_node}_plus_{input_value}"
 
-        self.G.add_nodes_from([
-            (new_label, {'label': input, 'level': this_node['level'] + 1})
-        ])
-        self.G.add_edge(self.bottom_node, new_label, color='black')
-        self.bottom_node = new_label
+            self.G.add_nodes_from([
+                (new_label, {'label': input_value, 'level': this_node['level'] + 1})
+            ])
+            self.G.add_edge(self.bottom_node, new_label, color='black')
+            self.bottom_node = new_label
 
     def get_bottom(self):
         pass
@@ -663,3 +664,38 @@ def _safe_draw_tree(G):
 
 # Run the test
 #test_linear_tree_chop()
+
+
+def test_red_edges():
+    print("Testing merge with predefined trees")
+
+    ht1 = HistoryTree("Root")
+    ht1.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('A_0', {'label': '0', 'level': 0})
+    ])
+    ht1.G.add_edges_from([
+        ("Root", "A_0", {'color': 'black'})
+    ])
+    ht1.bottom_node = "A_0"
+    ht1.current_level = 1
+    ht1.draw_tree()
+
+    ht2 = HistoryTree("Root")
+    ht2.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('A_0', {'label': '1', 'level': 0})
+    ])
+    ht2.G.add_edges_from([
+        ("Root", "A_0", {'color': 'black'})
+    ])
+    ht2.bottom_node = "A_0"
+    ht2.current_level = 1
+    ht2.draw_tree()
+
+    print("Merging trees...")
+    ht2.merge_trees(ht1)
+    ht2.draw_tree()
+
+
+#test_red_edges()

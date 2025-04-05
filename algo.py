@@ -37,8 +37,13 @@ class SimulationApp:
         self.draw_graph(G)
 
         for i, agent in enumerate(self.agents):
+            print(f"Agent {i}")
             neighbors = [self.agents[n] for n in G.neighbors(i)]
             agent.main(neighbors)
+            print('-----------------------------------------------------------')
+
+        for agent in self.agents:
+            agent.update_ht()
 
         self.current_round += 1
 

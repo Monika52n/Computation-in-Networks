@@ -2,12 +2,13 @@ from history_tree import HistoryTree
 from collections import defaultdict
 
 class Agent:
+
     def __init__(self, n, input_value):
         self.n = n  # Number of agents in the network
         self.input_value = input_value  # Agent's input
-        #self.myHT = HistoryTree(input_value)  # Current view of the history tree
-        self.myHT = HistoryTree("Root")
         self.receivedMessages = []
+        self.myHT = HistoryTree('Root', self.input_value)
+        self.myHT_new = self.myHT
 
     def input(self):
         return self.input_value
@@ -56,11 +57,13 @@ class Agent:
 
         return result
 
+    def update_ht(self):
+        self.myHT = self.myHT_new
 
     def main(self, neighbors):
         print(f"Length {len(self.receivedMessages)}")
         if self.myHT.get_max_height() > 2 * self.n - 2:
-            self.myHT = HistoryTree(self.input_value)
+            self.myHT = HistoryTree('Root', self.input_value)
 
         for neighbor in neighbors:
             #neighbor.receive_from_neighbor(self.send_to_neighbor()) #sending current ht to all neighbors
@@ -69,26 +72,25 @@ class Agent:
         allMessages = self.receivedMessages + [self.myHT]
         minHT = min(allMessages, key=lambda ht: ht.get_max_height())
 
-        while self.myHT.get_max_height() > minHT.get_max_height():
-            self.chop(self.myHT)
+        while self.myHT_new.get_max_height() > minHT.get_max_height():
+            self.chop(self.myHT_new)
 
         # Add a new bottom to the history tree
-        self.myHT.add_bottom(self.input_value)
+        self.myHT_new.add_bottom(self.input_value)
 
         for HT in self.receivedMessages:
             while HT.get_max_height() > minHT.get_max_height():
                 self.chop(HT)
+            self.myHT_new.merge_trees(HT)
 
-            self.myHT.merge_trees(HT)
+        if self.myHT_new.get_max_height() == 2 * self.n - 1:
+            self.chop(self.myHT_new)
 
-        if self.myHT.get_max_height() == 2 * self.n - 1:
-            self.chop(self.myHT)
-
-        self.myHT.draw_tree()
+        self.myHT_new.draw_tree()
 
         self.receivedMessages = []
         if True: #"counting_level" in self.myHT:
-            self.output(self.compute_frequencies(self.myHT))
+            self.output(self.compute_frequencies(self.myHT_new))
         else:
             self.output([(self.input_value, 100)])
 
