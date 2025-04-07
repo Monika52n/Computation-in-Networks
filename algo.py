@@ -25,9 +25,8 @@ class SimulationApp:
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.graph_frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.graph_frame, anchor="nw")
-
-        self.next_button = tk.Button(root, text="Next round", command=self.run_next_round)
+        self.canvas.create_window((20, 20), window=self.graph_frame, anchor="nw")
+        self.next_button = tk.Button(self.canvas, text="Next round", command=self.run_next_round)
         self.next_button.pack()
 
         G = nx.Graph()
@@ -64,19 +63,20 @@ class SimulationApp:
             agent.main(neighbors)
             print('-----------------------------------------------------------')
 
+
+        tree_fig = Figure(figsize=(len(self.agents)*3, len(self.agents)*1.5))  
         for i, agent in enumerate(self.agents):
             print(f"Agent {i}")
             agent.update_ht()
-            tree_fig = Figure(figsize=(6, 2 * len(self.agents)))
-            tree_ax = tree_fig.add_subplot(1, 1, 1)
+            tree_ax = tree_fig.add_subplot(1, len(self.agents), i+1)
             agent.myHT.draw_tree(i, tree_ax)
 
-            # Add the tree figure to the graph_frame
-            tree_canvas = FigureCanvasTkAgg(tree_fig, master=self.graph_frame)
-            tree_canvas.get_tk_widget().pack(pady=10)  # Adds spacing between trees
-            tree_canvas.draw()
-
         self.current_round += 1
+
+        # Add the tree figure to the graph_frame
+        tree_canvas = FigureCanvasTkAgg(tree_fig, master=self.graph_frame)
+        tree_canvas.get_tk_widget().pack(pady=10)  # Adds spacing between trees
+        tree_canvas.draw()
 
         # Update the scrollable region
         self.graph_frame.update_idletasks()
