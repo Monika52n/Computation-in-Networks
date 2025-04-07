@@ -37,18 +37,22 @@ class SimulationApp:
         self.draw_graph(G)
 
         for i, agent in enumerate(self.agents):
-            neighbors = list(G.neighbors(i))
-            for neighbor in neighbors:
-                self.agents[neighbor].receive_from_neighbor(agent.send_to_neighbor())
+            print(f"Agent {i}")
+            neighbors = [self.agents[n] for n in G.neighbors(i)]
+            agent.main(neighbors)
+            print('-----------------------------------------------------------')
 
         for agent in self.agents:
-            agent.main()
+            #agent.myHT.draw_tree()
+            agent.update_ht()
+            agent.myHT.draw_tree()
 
         self.current_round += 1
 
 
 if __name__ == "__main__":
-    agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
+    #agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
+    agents_inputs = [1, 0, 0, 0]
     n = len(agents_inputs)
 
     root = tk.Tk()
