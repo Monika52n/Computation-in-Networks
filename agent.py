@@ -10,6 +10,7 @@ class Agent:
         self.receivedMessages = []
         self.myHT = HistoryTree('Root', self.input_value)
         self.myHT_new = self.myHT
+        self.done = False
 
     def input(self):
         return self.input_value
@@ -24,7 +25,6 @@ class Agent:
         self.receivedMessages.append(receivedMessage)
 
     def chop(self, history_tree):
-        # Chop level L0 from the history tree as described in the algorithm
         history_tree.chop()
 
     def compute_frequencies(self, history_tree):
@@ -164,6 +164,9 @@ class Agent:
 
     def main(self, neighbors):
         print(f"Length {len(self.receivedMessages)}")
+
+        self.other_readies = []
+        
         if self.myHT_new.get_max_height() > 2 * self.n - 2:
             self.myHT_new = HistoryTree('Root', self.input_value)
 
@@ -184,26 +187,36 @@ class Agent:
 
         for HT in self.receivedMessages:
             while len(HT.get_path_to_root(HT.bottom_node)) > 2 and HT.get_max_height() > minHT.get_max_height():
+                print('before chop')
                 self.chop(HT)
+                print('chop ok')
+                print(len(HT.get_path_to_root(HT.bottom_node)))
             self.myHT_new.merge_trees(HT)
+            print('merge ok')
 
         #self.myHT_new.draw_tree()
         print('chop 2')
 
         if self.myHT_new.get_max_height() == 2 * self.n - 1:
+            print('before chop 3')
             self.chop(self.myHT_new)
-
-        print('chop 3')
+            print('after chop 3')
 
         self.receivedMessages = []
-        if True: #"counting_level" in self.myHT:
-            self.output(self.compute_frequencies(self.myHT_new))
+        
+        frequencies = self.compute_frequencies(self.myHT_new)
+        if frequencies:
+            self.output(frequencies)
+            self.ready = True
         else:
             self.output([(self.input_value, 100)])
+            self.ready = False
 
-    '''def merge_trees(self, tree1, tree2):
-        # This function will merge two history trees (simplified)
-        return tree1  # Simplified, implement tree merging logic'''
+        # 9. Ha mindenki készen van, leállhatunk
+        if self.ready and all(self.other_readies):
+            print(">>> Mindenki kész, algoritmus LEÁLL <<<")
+            self.done = True
+
 
 
 def test_compute_frequencies():

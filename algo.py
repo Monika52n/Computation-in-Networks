@@ -32,6 +32,11 @@ class SimulationApp:
         self.canvas.draw()
 
     def run_next_round(self):
+        if all(agent.done for agent in self.agents):
+            print(">>> Mindenki kész, algoritmus LEÁLL <<<")
+            self.next_button.config(state=tk.DISABLED)
+            return
+        
         print(f"Round {self.current_round + 1}")
         G = self.generate_dynamic_graph()
         self.draw_graph(G)
@@ -42,10 +47,10 @@ class SimulationApp:
             agent.main(neighbors)
             print('-----------------------------------------------------------')
 
-        for agent in self.agents:
+        for i, agent in enumerate(self.agents):
             #agent.myHT.draw_tree()
             agent.update_ht()
-            agent.myHT.draw_tree()
+            agent.myHT.draw_tree(i)
 
         self.current_round += 1
 

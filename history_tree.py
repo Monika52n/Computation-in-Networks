@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    '''def __init__(self, root_label, input_value):
+    def __init__(self, root_label, input_value):
         self.G = nx.DiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -20,9 +20,9 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value'''
+        self.id = input_value
 
-    def __init__(self, root_label):
+    """ def __init__(self, root_label):
         self.G = nx.DiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int)
+        self.red_edges = defaultdict(int) """
 
     def get_tree(self):
         return self.G
@@ -97,13 +97,16 @@ class HistoryTree:
                             new_node = f"{other_node}_m"
                             print(f"Creating new node {new_node} for {other_node}")
 
-                            self.G.add_node(new_node, label=other_attrs['label'], level=other_attrs['level'])
-                            node_map[other_node] = new_node
+                            if parent_mapped != new_node:
+                                self.G.add_node(new_node, label=other_attrs['label'], level=other_attrs['level'])
+                                node_map[other_node] = new_node
 
-                            print(f"Adding edge from {parent_mapped} to {new_node}")
-                            self.G.add_edge(parent_mapped, new_node, color='black')
+                                print(f"Adding edge from {parent_mapped} to {new_node}")
+                                self.G.add_edge(parent_mapped, new_node, color='black')
 
-                            new_nodes.append(new_node)
+                                new_nodes.append(new_node)
+                            else:
+                                print(f"WARNING: Self-loop detected and avoided: {parent_mapped} -> {new_node}")
 
                 """ matched = False
                 for this_node in this_level_nodes:
@@ -143,8 +146,8 @@ class HistoryTree:
     def get_path_to_root(graph, node):
         # Visszaadja a csomópont útvonalát a gyökérig (ancestor chain). 
         path = []
-        print('get_path_to_root: node: ', node)
-        print('nodes before ERR: ', graph.G.nodes)
+        # print('get_path_to_root: node: ', node)
+        # print('nodes before ERR: ', graph.G.nodes)
         while node is not None:
             path.append(graph.G.nodes[node]['label'])  # Az útvonalban a címkét tároljuk
             predecessors = list(graph.G.predecessors(node))
@@ -153,7 +156,7 @@ class HistoryTree:
 
 
 
-    def draw_tree(self):
+    def draw_tree(self, num):
         try:
             # Create a consistent layout
             pos = {}
@@ -208,7 +211,7 @@ class HistoryTree:
             nx.draw_networkx_edge_labels(self.G, pos, edge_labels=red_edge_labels, font_color='red')
             
             #plt.title('History Tree Visualization %i' % self.id)
-            plt.title('History Tree Visualization')
+            plt.title(f'History Tree Visualization {num}')
             plt.axis('off')
             plt.tight_layout()
             plt.show()
@@ -244,7 +247,6 @@ class HistoryTree:
 
     def chop_operation(self):
         # 1. Eliminate nodes in level L0 and their incident edges
-        # Assuming levels are stored as node attributes 'level'
         L0_nodes = [node for node, data in self.G.nodes(data=True) if data.get('level') == 0]
 
         # Remove all edges to/from L0 nodes
@@ -254,12 +256,12 @@ class HistoryTree:
         # 2. Reconnect root to nodes in level L1 via black edges
         L1_nodes = [node for node, data in self.G.nodes(data=True) if data.get('level') == 1]
         for node in L1_nodes:
-            self.G.add_edge(self.G.graph['Root'], node, color='black')  # Assuming black edges are marked by 'color' attribute
+            self.G.add_edge(self.G.graph['Root'], node, color='black') 
 
         # 3. Shift all nodes by one level
         for node, data in self.G.nodes(data=True):
             if data.get('level') is not None:
-                data['level'] += 1  # Shift the level of the node
+                data['level'] -= 1  # Shift the level of the node
 
         # 4. Merge nodes with isomorphic sub-views
         def find_and_merge_isomorphic_subviews():
@@ -364,7 +366,7 @@ class HistoryTree:
                     self.G.add_edge(representative, child, **edge_data)
         
         # Process inbound red edges (add multiplicities to representative)
-        '''for predecessor in list(self.G.predecessors(node)):
+        """ for predecessor in list(self.G.predecessors(node)):
             edge_data = self.G.edges[predecessor, node]
             if edge_data.get('color') == 'red':
                 multiplicity = edge_data.get('multiplicity', 1)
@@ -375,7 +377,7 @@ class HistoryTree:
                     # Create new red edge
                     self.G.add_edge(predecessor, representative, 
                                 color='red', 
-                                multiplicity=multiplicity)'''
+                                multiplicity=multiplicity) """
         
         # Process outbound red edges (add multiplicities)
         for child in list(self.G.successors(node)):
