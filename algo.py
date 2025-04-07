@@ -1,3 +1,4 @@
+from matplotlib.figure import Figure
 from agent import Agent
 from history_tree import HistoryTree
 import networkx as nx
@@ -14,22 +15,38 @@ class SimulationApp:
         self.current_round = 0
         self.agents = [Agent(n, input_value) for input_value in agents_inputs]
 
-        self.fig, self.ax = plt.subplots()
-        self.canvas = FigureCanvasTkAgg(self.fig, master=root)
-        self.canvas.get_tk_widget().pack()
+        # Create the canvas for scrolling content
+        self.canvas = tk.Canvas(self.root)
+        self.scrollbar = tk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Pack the scrollbar and canvas
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.graph_frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.graph_frame, anchor="nw")
 
         self.next_button = tk.Button(root, text="Next round", command=self.run_next_round)
         self.next_button.pack()
 
-        self.run_next_round()
+        G = nx.Graph()
+        G.add_nodes_from(range(self.n))
+        self.draw_graph(G)
 
     def generate_dynamic_graph(self):
         return nx.erdos_renyi_graph(self.n, p=0.5)
 
     def draw_graph(self, G):
-        self.ax.clear()
-        nx.draw(G, ax=self.ax, with_labels=True, node_color="lightblue", edge_color="gray", node_size=800)
-        self.canvas.draw()
+        fig = Figure(figsize=(6, 6))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.clear()
+        nx.draw(G, ax=ax, with_labels=True, node_color="lightblue", edge_color="gray", node_size=800)
+
+        # Add the figure to the graph_frame
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.get_tk_widget().pack(pady=10)  # Adds spacing between graphs
+        canvas.draw()
 
     def run_next_round(self):
         if all(agent.done for agent in self.agents):
@@ -48,11 +65,22 @@ class SimulationApp:
             print('-----------------------------------------------------------')
 
         for i, agent in enumerate(self.agents):
-            #agent.myHT.draw_tree()
+            print(f"Agent {i}")
             agent.update_ht()
-            agent.myHT.draw_tree(i)
+            tree_fig = Figure(figsize=(6, 2 * len(self.agents)))
+            tree_ax = tree_fig.add_subplot(1, 1, 1)
+            agent.myHT.draw_tree(i, tree_ax)
+
+            # Add the tree figure to the graph_frame
+            tree_canvas = FigureCanvasTkAgg(tree_fig, master=self.graph_frame)
+            tree_canvas.get_tk_widget().pack(pady=10)  # Adds spacing between trees
+            tree_canvas.draw()
 
         self.current_round += 1
+
+        # Update the scrollable region
+        self.graph_frame.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
 
 if __name__ == "__main__":

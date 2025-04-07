@@ -156,7 +156,7 @@ class HistoryTree:
 
 
 
-    def draw_tree(self, num):
+    def draw_tree(self, num, ax):
         try:
             # Create a consistent layout
             pos = {}
@@ -187,20 +187,21 @@ class HistoryTree:
                     pos[node] = (random.uniform(0,1), random.uniform(-len(levels),0))
             
             # Draw the graph
-            plt.figure(figsize=(12, 8))
+            ax.set_title(f'History Tree Visualization {num}')
+            ax.axis('off')
             
             # Separate edge types
             black_edges = [(u,v) for u,v,d in self.G.edges(data=True) if d.get('color') == 'black']
             red_edges = [(u,v) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red']
             
             # Draw elements
-            nx.draw_networkx_nodes(self.G, pos, node_size=700, node_color='lightblue')
-            nx.draw_networkx_edges(self.G, pos, edgelist=black_edges, edge_color='black', width=2)
-            nx.draw_networkx_edges(self.G, pos, edgelist=red_edges, edge_color='red', width=2, style='dashed')
+            nx.draw_networkx_nodes(self.G, pos, node_size=700, node_color='lightblue', ax=ax)
+            nx.draw_networkx_edges(self.G, pos, edgelist=black_edges, edge_color='black', width=2, ax=ax)
+            nx.draw_networkx_edges(self.G, pos, edgelist=red_edges, edge_color='red', width=2, style='dashed', ax=ax)
             
             # Draw labels
             node_labels = {n: d.get('label', n) for n,d in self.G.nodes(data=True)}
-            nx.draw_networkx_labels(self.G, pos, labels=node_labels, font_size=10)
+            nx.draw_networkx_labels(self.G, pos, labels=node_labels, font_size=10, ax=ax)
             
             # Add multiplicity labels for red edges
             red_edge_labels = {
@@ -208,13 +209,9 @@ class HistoryTree:
                 for u,v,d in self.G.edges(data=True) 
                 if d.get('color') == 'red'
             }
-            nx.draw_networkx_edge_labels(self.G, pos, edge_labels=red_edge_labels, font_color='red')
+            nx.draw_networkx_edge_labels(self.G, pos, edge_labels=red_edge_labels, font_color='red', ax=ax)
             
             #plt.title('History Tree Visualization %i' % self.id)
-            plt.title(f'History Tree Visualization {num}')
-            plt.axis('off')
-            plt.tight_layout()
-            plt.show()
 
         except Exception as e:
             print(f"Error drawing tree: {str(e)}")
@@ -473,7 +470,8 @@ class HistoryTree:
         plt.show()
 
     def get_max_height(self):
-        return nx.dag_longest_path_length(self.G, 'Root') if self.G.nodes else 0
+        alma = nx.dag_longest_path_length(self.G, 'Root') if self.G.nodes else 0
+        return alma
 
 
 ################### tests merge
