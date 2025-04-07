@@ -46,9 +46,6 @@ class HistoryTree:
         new_nodes = []
 
         for level in range(-1, min(self.current_level, other_tree.current_level) + 1):
-            print(level)
-            for node in self.G.nodes(data=True):
-                print(node)
             this_level_nodes = [n for n, attr in self.G.nodes(data=True) if attr['level'] == level]
             other_level_nodes = [n for n, attr in other_tree.G.nodes(data=True) if attr['level'] == level]
 
@@ -105,9 +102,12 @@ class HistoryTree:
                         existing_children = list(self.G.successors(parent_mapped))
                         duplicate_found = any(self.G.nodes[child]['label'] == other_attrs['label'] for child in existing_children)
 
+
+
                         if duplicate_found:
                             print(f"Skipping {other_node}, because an identical labeled child already exists under {parent_mapped}")
                             node_map[other_node] = next(child for child in existing_children if self.G.nodes[child]['label'] == other_attrs['label'])
+                            node_to_check_for_in_edge = parent_mapped
                         else:
                             new_node = f"{other_node}_m"
                             print(f"Creating new node {new_node} for {other_node}")
@@ -120,8 +120,21 @@ class HistoryTree:
                                 self.G.add_edge(parent_mapped, new_node, color='black')
 
                                 new_nodes.append(new_node)
+                                node_to_check_for_in_edge = new_node
                             else:
                                 print(f"WARNING: Self-loop detected and avoided: {parent_mapped} -> {new_node}")
+
+
+                        for other_out_edge in other_tree.G.in_edges(other_node, data=True):
+                            if other_out_edge[2]['color'] == 'red':
+                                other_source_path = other_tree.get_path_to_root(other_out_edge[0])
+                                for node in self.G.nodes():
+                                    this_source_path = self.get_path_to_root(node)
+                                    if this_source_path == other_source_path:
+                                        self.red_edges[(node, node_to_check_for_in_edge)] += 1
+                                        self.G.add_edge(node, node_to_check_for_in_edge, color = 'red', multiplicity=self.red_edges[(node, node_to_check_for_in_edge)])
+
+
 
 
         if other_tree.bottom_node in node_map:
@@ -135,14 +148,13 @@ class HistoryTree:
             ])
             self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
 
-            self.draw_tree(2)
-            predecessors = list(self.G.predecessors(new_bottom_node))
-            if predecessors[0] != mapped_bottom:
-                self.red_edges[(mapped_bottom, new_bottom_node)] += 1
-                self.G.add_edge(mapped_bottom, new_bottom_node, color='red', multiplicity=self.red_edges[(mapped_bottom, new_bottom_node)])
-                self.bottom_node = new_bottom_node
-            else:
-                self.G.remove_node(new_bottom_node)
+            #predecessors = list(self.G.predecessors(new_bottom_node))
+            #if predecessors[0] != mapped_bottom:
+            self.red_edges[(mapped_bottom, new_bottom_node)] += 1
+            self.G.add_edge(mapped_bottom, new_bottom_node, color='red', multiplicity=self.red_edges[(mapped_bottom, new_bottom_node)])
+            self.bottom_node = new_bottom_node
+            '''else:
+                self.G.remove_node(new_bottom_node)'''
 
 
         return node_map
@@ -850,23 +862,23 @@ def test_merge_trees2():
         ('Root', {'label': 'Root', 'level': -1}),
         ('A2', {'label': '1', 'level': 0}),
         ('B2', {'label': '0', 'level': 0}),
-        ('C2', {'label': '1', 'level': 1}),
+        ('C2', {'label': '0', 'level': 1})
 
     ])
     ht2.G.add_edges_from([
-        ("Root", "A1", {'color': 'black'}),
-        ("Root", "B1", {'color': 'black'}),
-        ("A2", "C2", {'color': 'black'}),
+        ("Root", "A2", {'color': 'black'}),
+        ("Root", "B2", {'color': 'black'}),
+        ("B2", "C2", {'color': 'black'}),
     ])
     ht2.bottom_node = "C2"
     ht2.current_level = 1
     ht2.draw_tree(2)
 
     print("Merging trees...")
-    #ht1.merge_trees(ht2)
-    #ht1.draw_tree(1)
+    ht2.merge_trees(ht1)
+    ht2.draw_tree(2)
 
-test_merge_trees2()
+#test_merge_trees2()
 
 
 
