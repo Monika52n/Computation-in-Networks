@@ -186,13 +186,11 @@ class Agent:
         self.myHT_new.add_bottom(self.input_value)
 
         for HT in self.receivedMessages:
-            i = 8
-            while i > 0 and len(HT.get_path_to_root(HT.bottom_node)) > 2 and HT.get_max_height() > minHT.get_max_height():
+            while len(HT.get_path_to_root(HT.bottom_node)) > 2 and HT.get_max_height() > minHT.get_max_height():
                 print('before chop')
                 self.chop(HT)
                 print('chop ok')
                 print(len(HT.get_path_to_root(HT.bottom_node)))
-                i-=1
             self.myHT_new.merge_trees(HT)
             print('merge ok')
 

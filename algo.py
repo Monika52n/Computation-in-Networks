@@ -47,10 +47,10 @@ class SimulationApp:
             agent.main(neighbors)
             print('-----------------------------------------------------------')
 
-        for agent in self.agents:
+        for i, agent in enumerate(self.agents):
             #agent.myHT.draw_tree()
             agent.update_ht()
-            agent.myHT.draw_tree()
+            agent.myHT.draw_tree(i)
 
         self.current_round += 1
 

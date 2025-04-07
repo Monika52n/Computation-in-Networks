@@ -156,7 +156,7 @@ class HistoryTree:
 
 
 
-    def draw_tree(self):
+    def draw_tree(self, num):
         try:
             # Create a consistent layout
             pos = {}
@@ -211,7 +211,7 @@ class HistoryTree:
             nx.draw_networkx_edge_labels(self.G, pos, edge_labels=red_edge_labels, font_color='red')
             
             #plt.title('History Tree Visualization %i' % self.id)
-            plt.title('History Tree Visualization')
+            plt.title(f'History Tree Visualization {num}')
             plt.axis('off')
             plt.tight_layout()
             plt.show()
