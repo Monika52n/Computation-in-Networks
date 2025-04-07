@@ -6,8 +6,8 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    def __init__(self, root_label, input_value):
-        self.G = nx.DiGraph()
+    '''def __init__(self, root_label, input_value):
+        self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
             (root_label, {'label': root_label, 'level': -1})
@@ -20,10 +20,10 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value
+        self.id = input_value'''
 
-    """ def __init__(self, root_label):
-        self.G = nx.DiGraph()
+    def __init__(self, root_label):
+        self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
             (root_label, {'label': root_label, 'level': -1})
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int) """
+        self.red_edges = defaultdict(int)
 
     def get_tree(self):
         return self.G
@@ -245,69 +245,10 @@ class HistoryTree:
 
         return pos
 
-    def chop_operation(self):
-        # 1. Eliminate nodes in level L0 and their incident edges
-        L0_nodes = [node for node, data in self.G.nodes(data=True) if data.get('level') == 0]
-
-        # Remove all edges to/from L0 nodes
-        for node in L0_nodes:
-            self.G.remove_node(node)
-
-        # 2. Reconnect root to nodes in level L1 via black edges
-        L1_nodes = [node for node, data in self.G.nodes(data=True) if data.get('level') == 1]
-        for node in L1_nodes:
-            self.G.add_edge(self.G.graph['Root'], node, color='black') 
-
-        # 3. Shift all nodes by one level
-        for node, data in self.G.nodes(data=True):
-            if data.get('level') is not None:
-                data['level'] -= 1  # Shift the level of the node
-
-        # 4. Merge nodes with isomorphic sub-views
-        def find_and_merge_isomorphic_subviews():
-            # Group nodes by level
-            for level in set(nx.get_node_attributes(self.G, 'level').values()):
-                nodes_in_level = [node for node, data in self.G.nodes(data=True) if data.get('level') == level]
-                visited = set()
-                for node in nodes_in_level:
-                    if node not in visited:
-                        # Find nodes that are isomorphic to this node's sub-view
-                        subview = nx.ego_graph(self.G, node)  # Get the subgraph rooted at 'node'
-                        isomorphisms = []
-                        for other_node in nodes_in_level:
-                            if other_node != node and other_node not in visited:
-                                other_subview = nx.ego_graph(self.G, other_node)
-                                if nx.is_isomorphic(subview, other_subview):
-                                    isomorphisms.append(other_node)
-
-                        # Merge the isomorphic nodes
-                        for merge_node in isomorphisms:
-                            # Perform the merge: redirect edges, handle red edge multiplicity
-                            merge_red_edges(self.G, node, merge_node)
-                            # Remove merge_node from the graph
-                            visited.add(merge_node)
-
-        def merge_red_edges(G, node, merge_node):
-            # Handle merging red edges: Summing multiplicities
-            for neighbor in list(G.neighbors(merge_node)):
-                if G[node][merge_node].get('color') == 'red':  # Check if red edge
-                    if G[node].get(neighbor):
-                        G[node][neighbor]['multiplicity'] += G[merge_node][neighbor].get('multiplicity', 0)
-                    else:
-                        G[node][neighbor]['multiplicity'] = G[merge_node][neighbor].get('multiplicity', 0)
-                    G.remove_edge(merge_node, neighbor)  # Remove old edge
-
-        # Call the function to merge nodes with isomorphic sub-views
-        find_and_merge_isomorphic_subviews()
-
-        return self.G
 
     # chop
     def chop(self):
-        self.G = self.chop_operation()
-        '''print('PATH_TO_ROOT: ', self.get_path_to_root(self.bottom_node))
         if len(self.get_path_to_root(self.bottom_node)) > 2:
-            print('230')
             if not self.G.nodes():
                 return
 
@@ -345,6 +286,7 @@ class HistoryTree:
                         if not self.G.has_edge("Root", node):
                             self.G.add_edge("Root", node, color='black')
 
+
             # Step 6: Restore all edges
             for edge_type in ['black', 'red']: #'red'
                 for (u, v), m in edges_to_preserve[edge_type].items():
@@ -354,13 +296,13 @@ class HistoryTree:
 
             # Step 7: Merge isomorphic nodes
             while self._merge_all_levels():
-                pass'''
+                pass
 
     def _merge_nodes(self, representative, node):
         """Merge node into representative including red edge handling"""
         # Redirect black edges (children)
         for child in list(self.G.successors(node)):
-            edge_data = self.G.edges[node, child]
+            edge_data = self.G.edges[node, child, 0]
             if edge_data.get('color') == 'black':
                 if not self.G.has_edge(representative, child):
                     self.G.add_edge(representative, child, **edge_data)
@@ -381,11 +323,11 @@ class HistoryTree:
         
         # Process outbound red edges (add multiplicities)
         for child in list(self.G.successors(node)):
-            edge_data = self.G.edges[node, child]
+            edge_data = self.G.edges[node, child, 0]
             if edge_data.get('color') == 'red':
                 multiplicity = edge_data.get('multiplicity', 1)
                 if self.G.has_edge(representative, child):
-                    self.G.edges[representative, child]['multiplicity'] += multiplicity
+                    self.G.edges[representative, child, 0]['multiplicity'] += multiplicity
                 else:
                     self.G.add_edge(representative, child, 
                                 color='red', 
@@ -411,8 +353,10 @@ class HistoryTree:
             return False
 
         groups = defaultdict(list)
+
         for node in level_nodes:
             groups[self._hash_sub_view(node)].append(node)
+            #print(self._hash_sub_view(node))
 
         merged = False
         for group in groups.values():
@@ -430,14 +374,31 @@ class HistoryTree:
             'label': self.G.nodes[node].get('label', ''),
             'children': []
         }
-
+        
         for child in sorted(self.G.successors(node)):
-            edge_data = self.G.edges[node, child]
+            edge_data = self.G.edges[node, child, 0]
             if edge_data.get('color') == 'black':
                 sub_view['children'].append(('black', self.G.nodes[child].get('label', '')))
 
         sub_view['children'].sort()
         return str(sub_view)
+
+    '''def _hash_sub_view(self, node):
+        """Create a hashable representation of the sub-view rooted at node"""
+        sub_view = {
+            'label': self.G.nodes[node].get('label', ''),
+            'value'
+            'parents': []
+        }
+
+        for p in sorted(self.G.predecessors(node)):
+            edge_data = self.G.edges[p, node, 0]
+            if edge_data.get('color') == 'black':
+                sub_view['parents'].append(('black', self.G.nodes[p].get('label', '')))
+
+        sub_view['parents'].sort()
+        print('sub', sub_view)
+        return str(sub_view)'''
 
     def add_bottom(self, input_value):
         print('input_value: ', input_value)
@@ -786,6 +747,72 @@ def test_red_edges():
 #test_red_edges()
 
 
+
+def test_chop():
+    ht2 = HistoryTree("Root")  # This will create root node named 'root' with label 'Root'
+    ht2.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('A', {'label': '0', 'level': 0}),
+        ('B', {'label': '1', 'level': 0}),
+        ('C', {'label': '2', 'level': 0}),
+
+        ('D', {'label': '0', 'level': 1}),
+        ('E', {'label': '1', 'level': 1}),
+        ('F', {'label': '1', 'level': 1}),
+
+        ('G', {'label': '0', 'level': 2}),
+        ('H', {'label': '1', 'level': 2}),
+        ('I', {'label': '1', 'level': 2}),
+
+        ('J', {'label': '0', 'level': 3})
+
+    ])
+    ht2.G.add_edges_from([
+        ("Root", "A", {'color': 'black'}),
+        ("Root", "B", {'color': 'black'}),
+        ("Root", "C", {'color': 'black'}),
+
+        ("A", "D", {'color': 'black'}),
+        ("B", "E", {'color': 'black'}),
+        ("B", "F", {'color': 'black'}),
+
+        ("D", "G", {'color': 'black'}),
+        ("E", "H", {'color': 'black'}),
+        ("F", "I", {'color': 'black'}),
+
+        ("G", "J", {'color': 'black'}),
+
+        ###
+        ("J", "I", {'color': 'black'}),
+
+        ("A", "E", {'color': 'red', 'multiplicity': 1}),
+        ("B", "D", {'color': 'red', 'multiplicity': 1}),
+        ("C", "E", {'color': 'red', 'multiplicity': 1}),
+        ("C", "F", {'color': 'red', 'multiplicity': 1}),
+
+        ("E", "G", {'color': 'red', 'multiplicity': 1}),
+        ("E", "H", {'color': 'red', 'multiplicity': 2}),
+        ("E", "I", {'color': 'red', 'multiplicity': 1}),
+        ("F", "I", {'color': 'red', 'multiplicity': 1}),
+
+        ("H", "J", {'color': 'red', 'multiplicity': 1}),
+        ("I", "J", {'color': 'red', 'multiplicity': 2}),
+
+    ])
+    ht2.bottom_node = "J"
+    ht2.current_level = 4
+
+
+    print("Before chop:")
+    ht2.draw_tree(2)
+
+    ht2.chop()
+
+    ht2.draw_tree(2)
+
+
+# Run the test
+#test_chop()
 
 
 
