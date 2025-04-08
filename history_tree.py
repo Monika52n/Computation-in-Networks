@@ -103,7 +103,7 @@ class HistoryTree:
                         duplicate_found = any(self.G.nodes[child]['label'] == other_attrs['label'] for child in existing_children)
 
 
-
+                        node_to_check_for_in_edge = None
                         if duplicate_found:
                             print(f"Skipping {other_node}, because an identical labeled child already exists under {parent_mapped}")
                             node_map[other_node] = next(child for child in existing_children if self.G.nodes[child]['label'] == other_attrs['label'])
@@ -265,7 +265,7 @@ class HistoryTree:
             """ print("\n--- CHOP START ---")
             print("Tree before chop:")
             print("Nodes:", list(self.G.nodes(data=True)))
-            print("Edges:", list(self.G.edges(data=True)))  """
+            print("Edges:", list(self.G.edges(data=True))) """
 
             if not self.G.nodes():
                 return
@@ -288,7 +288,12 @@ class HistoryTree:
                 # Collect all edges from L0 nodes
                 for _, neighbor, data in self.G.out_edges(l0_node, data=True):
                     edge_type = data.get('color', 'black')
-                    edges_to_preserve[edge_type][("Root", neighbor)] += data.get('multiplicity', 1)
+                    if edge_type == 'black':
+                        edges_to_preserve_key = ("Root", neighbor)
+                    else:
+                        edges_to_preserve_key = (l0_node, neighbor)
+                    
+                    edges_to_preserve[edge_type][edges_to_preserve_key] += data.get('multiplicity', 1)
 
                 # Collect all nodes that need level updates
                 for node in nx.dfs_preorder_nodes(self.G, source=l0_node):
@@ -310,9 +315,9 @@ class HistoryTree:
                     if v in self.G.nodes and (u == "Root" or u in self.G.nodes):
                         if not self.G.has_edge(u, v):
                             self.G.add_edge(u, v, color=edge_type, multiplicity=m)
-                        """ else:
+                        else:
                             # If edge already exists, just update multiplicity
-                            self.G.edges[u, v]['multiplicity'] += m """
+                            self.G.edges[u, v]['multiplicity'] += 1
 
             # Step 6: Merge isomorphic nodes
             while self._merge_all_levels():
@@ -322,8 +327,7 @@ class HistoryTree:
             print("Tree after chop:")
             print("Nodes:", list(self.G.nodes(data=True)))
             print("Edges:", list(self.G.edges(data=True)))
-            print("--- END ---\n")  """
-        
+            print("--- END ---\n") """  
 
     def chop2(self):
         if len(self.get_path_to_root(self.bottom_node)) > 2:
