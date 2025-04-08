@@ -27,7 +27,7 @@ class Agent:
     def chop(self, history_tree):
         history_tree.chop()
 
-    def compute_frequencies(self, history_tree):
+    def compute_frequencies2(self, history_tree):
         """Compute input frequencies based on the first counting level found in the history tree"""
         # Step 1: Find all levels and group nodes by level
         level_nodes = defaultdict(list)
@@ -159,6 +159,164 @@ class Agent:
         print("Computed frequencies:", frequencies)
         return frequencies
 
+    def compute_frequencies(self, history_tree):
+        """Compute input frequencies based on the first counting level found in the history tree"""
+        # Step 1: Find all levels and group nodes by level
+        level_nodes = defaultdict(list)
+        for node, data in history_tree.G.nodes(data=True):
+            level = data.get('level')
+            if level is not None:
+                level_nodes[level].append(node)
+
+        # Step 2: Find the first counting level (where each node has exactly one BLACK child)
+        counting_level = None
+        for level in sorted(level_nodes.keys()):
+            is_counting_level = True
+            for node in level_nodes[level]:
+                # Get all BLACK children in next level (handling multigraph)
+                black_children = []
+                for successor in history_tree.G.successors(node):
+                    for edge_key in history_tree.G[node][successor]:
+                        if history_tree.G[node][successor][edge_key].get('color') == 'black':
+                            black_children.append(successor)
+                            break  # only need one black edge per child
+                
+                if len(set(black_children)) != 1:  # using set to handle possible duplicates
+                    is_counting_level = False
+                    break
+
+            if is_counting_level and level + 1 in level_nodes:
+                counting_level = level
+                break
+
+        if counting_level is None:
+            print("No counting level found in the history tree")
+            return {}
+
+        print(f"Counting level found: {counting_level}")
+
+        # Step 3: Prepare data structures
+        nodes = level_nodes[counting_level]
+        node_index = {node: i for i, node in enumerate(nodes)}
+        equations = []
+        processed_pairs = set()
+
+        # Step 4: Find all RED edges between counting level nodes
+        for u in nodes:
+            # Find all RED edges from u to next level (handling multigraph)
+            for v in history_tree.G.successors(u):
+                for edge_key in history_tree.G[u][v]:
+                    if history_tree.G[u][v][edge_key].get('color') == 'red':
+                        # Find the BLACK parent of v in counting level
+                        black_parents = []
+                        for predecessor in history_tree.G.predecessors(v):
+                            for pred_edge_key in history_tree.G[predecessor][v]:
+                                if (history_tree.G[predecessor][v][pred_edge_key].get('color') == 'black'
+                                and predecessor in nodes):
+                                    black_parents.append(predecessor)
+                                    break  # only need one black edge per parent
+
+                        if not black_parents:
+                            continue
+
+                        p = black_parents[0]  # Should be exactly one black parent
+
+                        # Skip if we've already processed this pair
+                        if (u, p) in processed_pairs or (p, u) in processed_pairs:
+                            continue
+
+                        # Now find if there's a RED edge from p back to u's child
+                        # Find u's black child (handling multigraph)
+                        u_black_child = None
+                        for successor in history_tree.G.successors(u):
+                            for edge_key in history_tree.G[u][successor]:
+                                if history_tree.G[u][successor][edge_key].get('color') == 'black':
+                                    u_black_child = successor
+                                    break
+                            if u_black_child is not None:
+                                break
+
+                        if u_black_child is None:
+                            continue
+
+                        # Find red edges to u_black_child (handling multigraph)
+                        red_edges_to_u_child = []
+                        for predecessor in history_tree.G.predecessors(u_black_child):
+                            for edge_key in history_tree.G[predecessor][u_black_child]:
+                                if (history_tree.G[predecessor][u_black_child][edge_key].get('color') == 'red'
+                                and predecessor in nodes):
+                                    red_edges_to_u_child.append((predecessor, u_black_child))
+                                    break  # only need one red edge per predecessor
+
+                        if not red_edges_to_u_child:
+                            continue
+
+                        # Get multiplicities
+                        m1 = history_tree.G[u][v][edge_key].get('multiplicity', 1)
+                        m2_edge = red_edges_to_u_child[0]
+                        m2 = history_tree.G[m2_edge[0]][m2_edge[1]][next(iter(history_tree.G[m2_edge[0]][m2_edge[1]]))].get('multiplicity', 1)
+
+                        # Create equation: m1*a(u) = m2*a(p)
+                        equation = np.zeros(len(nodes))
+                        equation[node_index[u]] = m1
+                        equation[node_index[p]] = -m2
+                        equations.append(equation)
+                        processed_pairs.add((u, p))
+                        print(f"Equation added: {m1}*a({u}) = {m2}*a({p})")
+
+        if not equations:
+            print("No valid equations could be formed from red edges")
+            return {}
+
+        # Step 5: Solve the equation system
+        A = np.vstack(equations)
+        print(f"Equation matrix:\n{A}")
+
+        # Add sum constraint that all frequencies sum to 1
+        sum_constraint = np.ones(len(nodes))
+        A = np.vstack([A, sum_constraint])
+        b = np.zeros(A.shape[0])
+        b[-1] = 1  # The sum should equal 1
+
+        try:
+            # First try regular least squares
+            x, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
+
+            # If underdetermined or solution has negative values, use NNLS
+            if rank < len(nodes) or np.any(x < 0):
+                print("Using non-negative least squares for better solution")
+                from scipy.optimize import nnls
+                x, _ = nnls(A, b)
+
+                if np.allclose(x, 0):
+                    print("Could not find valid non-zero solution")
+                    return {}
+
+            # Normalize the solution
+            x = np.maximum(x, 0)  # Ensure no negative values
+            x = x / np.sum(x)  # Normalize to sum to 1
+
+        except Exception as e:
+            print(f"Failed to solve equations: {e}")
+            return {}
+
+        # Step 6: Compute frequencies
+        label_counts = defaultdict(float)
+        for i, node in enumerate(nodes):
+            label = history_tree.G.nodes[node].get('label')
+            if label is not None:
+                label_counts[label] += x[i]
+
+        # Normalize again in case of rounding errors
+        total = sum(label_counts.values())
+        if total <= 0:
+            print("Invalid frequency sum")
+            return {}
+
+        frequencies = {label: count/total for label, count in label_counts.items()}
+        print("Computed frequencies:", frequencies)
+        return frequencies
+
     def update_ht(self):
         self.myHT = self.myHT_new
 
@@ -223,10 +381,10 @@ def test_compute_frequencies():
 
     # Szintek létrehozása
     ht1.G.add_nodes_from([
-        ('root', {'label': 'Root', 'level': -1}),
+        ('Root', {'label': 'Root', 'level': -1}),
         ('t_0', {'label': 'A', 'level': 0}),
         ('u_0', {'label': 'B', 'level': 0}),
-        ('p_0', {'label': 'A', 'level': 0}),
+        ('p_0', {'label': 'D', 'level': 0}),
         ('h_0', {'label': 'C', 'level': 0}),
 
         ('b_1', {'label': 'A', 'level': 1}),
@@ -243,10 +401,10 @@ def test_compute_frequencies():
     ])
 
     ht1.G.add_edges_from([
-        ('root', 't_0', {'color': 'black'}),
-        ('root', 'u_0', {'color': 'black'}),
-        ('root', 'p_0', {'color': 'black'}),
-        ('root', 'h_0', {'color': 'black'}),
+        ('Root', 't_0', {'color': 'black'}),
+        ('Root', 'u_0', {'color': 'black'}),
+        ('Root', 'p_0', {'color': 'black'}),
+        ('Root', 'h_0', {'color': 'black'}),
 
         ('t_0', 'b_1', {'color': 'black'}),
         ('u_0', 'e_1', {'color': 'black'}),
@@ -267,10 +425,7 @@ def test_compute_frequencies():
     ("u_0", "b_1", {'color': 'red', 'multiplicity': 1}),
 
     ("b_1", "s2_2", {'color': 'red', 'multiplicity': 1}),
-    ("e_1", "s_2", {'color': 'red', 'multiplicity': 1}),
-
-    ("s_2", "y_3", {'color': 'red', 'multiplicity': 1}),
-    ("s2_2", "x_3", {'color': 'red', 'multiplicity': 1})
+    ("e_1", "s_2", {'color': 'red', 'multiplicity': 1})
     ])
 
     ht1.red_edges = {
@@ -282,10 +437,9 @@ def test_compute_frequencies():
         ("b_1", "s2_2"): 1,  # A küld B-nek
         ("e_1", "s_2"): 1,   # B küld A-nak
 
-        # Level 2 -> Level 3
-        ("s_2", "y_3"): 1,
-        ("s2_2", "x_3"): 1,
     }
+    
+    ht1.draw_tree(0)
 
     # Hívjuk meg a frequency számítót
     agent = Agent(n=5, input_value="Root")
