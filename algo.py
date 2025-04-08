@@ -1,3 +1,4 @@
+from tkinter import messagebox, simpledialog
 from matplotlib.figure import Figure
 from agent import Agent
 from history_tree import HistoryTree
@@ -18,20 +19,19 @@ class SimulationApp:
         # Create the canvas for scrolling content
         self.canvas = tk.Canvas(self.root)
         self.scrollbar = tk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        self.scrollbar2 = tk.Scrollbar(self.root, orient="horizontal", command=self.canvas.xview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.configure(xscrollcommand=self.scrollbar2.set)
 
         # Pack the scrollbar and canvas
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.scrollbar2.pack(side=tk.BOTTOM, fill=tk.X)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.graph_frame = tk.Frame(self.canvas)
         self.canvas.create_window((20, 20), window=self.graph_frame, anchor="nw")
         self.next_button = tk.Button(self.canvas, text="Next round", command=self.run_next_round)
         self.next_button.pack()
-
-        G = nx.Graph()
-        G.add_nodes_from(range(self.n))
-        self.draw_graph(G)
 
     def generate_dynamic_graph(self):
         return nx.erdos_renyi_graph(self.n, p=0.5)
@@ -82,13 +82,29 @@ class SimulationApp:
         self.graph_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
-
 if __name__ == "__main__":
-    #agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
-    agents_inputs = [1, 0, 0, 0]
-    n = len(agents_inputs)
-
     root = tk.Tk()
-    root.title("Universal self-stabilizing finite-state algorithm")
-    app = SimulationApp(root, n, agents_inputs)
-    root.mainloop()
+    root.withdraw()
+
+    try:
+        n = simpledialog.askinteger("Input", "Number of agents:")
+        if n is None or n <= 0:
+            raise ValueError("Operation cancelled.")
+
+        num_zeros = simpledialog.askinteger("Input", f"How many of the {n} agents should have the input of 0?")
+        if num_zeros is None:
+            raise ValueError("Operation cancelled.")
+        if num_zeros > n or num_zeros < 0:
+            raise ValueError("The number of zeros cannot be greater than n or less than 0.")
+
+        agents_inputs = [0] * num_zeros + [1] * (n - num_zeros)
+        random.shuffle(agents_inputs)
+
+        root.deiconify()
+        root.title("Universal self-stabilizing finite-state algorithm")
+        root.state("zoomed") 
+        app = SimulationApp(root, n, agents_inputs)
+        root.mainloop()
+
+    except ValueError as e:
+        messagebox.showerror("Error", str(e))
