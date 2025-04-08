@@ -363,7 +363,11 @@ class Agent:
 
         self.receivedMessages = []
         
-        frequencies = self.compute_frequencies(self.myHT_new)
+        frequencies = None
+        try: 
+            frequencies = self.compute_frequencies(self.myHT_new)
+        except Exception as e:
+            print("Couldn't compute frequencies") # type: ignore
         if frequencies:
             self.output(frequencies)
             self.ready = True
