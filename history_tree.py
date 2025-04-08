@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    '''def __init__(self, root_label, input_value):
+    def __init__(self, root_label, input_value):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -20,9 +20,9 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value'''
+        self.id = input_value
 
-    def __init__(self, root_label):
+    """ def __init__(self, root_label):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int)
+        self.red_edges = defaultdict(int) """
 
     def get_tree(self):
         return self.G
@@ -87,7 +87,7 @@ class HistoryTree:
                                         self.G.add_edge(this_node, node, color='red', multiplicity=self.red_edges[(this_node, node)])
 
 
-                        print(f"Skipping {other_node}, because the path matches an existing node: {this_node}")
+                        # print(f"Skipping {other_node}, because the path matches an existing node: {this_node}")
                         node_map[other_node] = this_node
                         matched = True
                         break
@@ -133,8 +133,6 @@ class HistoryTree:
                                     if this_source_path == other_source_path:
                                         self.red_edges[(node, node_to_check_for_in_edge)] += 1
                                         self.G.add_edge(node, node_to_check_for_in_edge, color = 'red', multiplicity=self.red_edges[(node, node_to_check_for_in_edge)])
-
-
 
 
         if other_tree.bottom_node in node_map:
@@ -260,11 +258,87 @@ class HistoryTree:
             child_x += step
 
         return pos
-
-
-    # chop
+    
+    # chop    
     def chop(self):
         if len(self.get_path_to_root(self.bottom_node)) > 2:
+            """ print("\n--- CHOP START ---")
+            print("Tree before chop:")
+            print("Nodes:", list(self.G.nodes(data=True)))
+            print("Edges:", list(self.G.edges(data=True))) """
+
+            if not self.G.nodes():
+                return
+
+            # Step 1: Identify L0 nodes (direct children of root)
+            l0_nodes = list(self.G.successors("Root"))
+            
+            # If there are no L0 nodes, nothing to chop
+            if not l0_nodes:
+                return
+
+            # Step 2: Collect edges to preserve and nodes to update
+            edges_to_preserve = {
+                'black': defaultdict(int),
+                'red': defaultdict(int)
+            }
+            nodes_to_update = {}
+            nodes_to_keep = set()
+
+            for l0_node in l0_nodes:
+                # Collect all edges from L0 nodes
+                for _, neighbor, data in self.G.out_edges(l0_node, data=True):
+                    edge_type = data.get('color', 'black')
+                    if edge_type == 'black':
+                        edges_to_preserve_key = ("Root", neighbor)
+                    else:
+                        edges_to_preserve_key = (l0_node, neighbor)
+                    
+                    edges_to_preserve[edge_type][edges_to_preserve_key] += data.get('multiplicity', 1)
+                    nodes_to_keep.add(neighbor)
+
+                # Collect all nodes that need level updates
+                for node in nx.dfs_preorder_nodes(self.G, source=l0_node):
+                    current_level = self.G.nodes[node]['level']
+                    nodes_to_update[node] = current_level - 1 if current_level > 0 else current_level
+
+            # Step 3: Remove only L0 nodes that have children (to prevent complete tree deletion)
+            l0_nodes_to_remove = [node for node in l0_nodes if any(self.G.out_edges(node))]
+            self.G.remove_nodes_from(l0_nodes_to_remove)
+
+            # Step 4: Update levels for remaining nodes
+            for node, new_level in nodes_to_update.items():
+                if node in self.G.nodes and node != "Root":
+                    self.G.nodes[node]['level'] = new_level
+
+            # Step 5: Restore all edges carefully
+            for edge_type in ['black', 'red']:
+                for (u, v), m in edges_to_preserve[edge_type].items():
+                    if v in self.G.nodes and (u == "Root" or u in self.G.nodes):
+                        if not self.G.has_edge(u, v):
+                            self.G.add_edge(u, v, color=edge_type, multiplicity=m)
+                        else:
+                            # If edge already exists, just update multiplicity
+                            self.G.edges[u, v]['multiplicity'] += m
+
+            # Step 6: Merge isomorphic nodes
+            while self._merge_all_levels():
+                pass
+                
+            """ print("--- CHOP END ---")
+            print("Tree after chop:")
+            print("Nodes:", list(self.G.nodes(data=True)))
+            print("Edges:", list(self.G.edges(data=True)))
+            print("--- END ---\n") """
+        
+
+    def chop2(self):
+        if len(self.get_path_to_root(self.bottom_node)) > 2:
+            print("\n--- CHOP START ---")
+            print("Tree before chop:")
+            print("Nodes:", list(self.G.nodes(data=True)))
+            print("Edges:", list(self.G.edges(data=True)))
+
             if not self.G.nodes():
                 return
 
@@ -314,6 +388,12 @@ class HistoryTree:
             # Step 7: Merge isomorphic nodes
             while self._merge_all_levels():
                 pass
+                
+            print("--- CHOP END ---")
+            print("Tree after chop:")
+            print("Nodes:", list(self.G.nodes(data=True)))
+            print("Edges:", list(self.G.edges(data=True)))
+            print("--- END ---\n")
 
     def _merge_nodes(self, representative, node):
         """Merge node into representative including red edge handling"""
@@ -360,7 +440,7 @@ class HistoryTree:
         for level in levels:
             if level < 0:
                 continue
-            self.draw_tree(2)
+            #self.draw_tree(2)
             merged |= self._merge_isomorphic_nodes_at_level(level)
         return merged
 
@@ -442,14 +522,6 @@ class HistoryTree:
         # Itt pl. egy egyszerű számítás lehetne, hogy hány "Input" van a fában
         input_count = sum(1 for node, attr in self.G.nodes(data=True) if attr['label'] == 'Input')
         return input_count
-    
-    def visualize(self):
-        # Gráf vizualizálása matplotlib segítségével
-        pos = nx.spring_layout(self.G)  # Elhelyezési algoritmus
-        labels = nx.get_node_attributes(self.G, 'label')
-        nx.draw(self.G, pos, with_labels=True, node_size=2000, node_color='skyblue')
-        nx.draw_networkx_labels(self.G, pos, labels=labels)
-        plt.show()
 
     def get_max_height(self):
         return nx.dag_longest_path_length(self.G, 'Root') if self.G.nodes else 0
