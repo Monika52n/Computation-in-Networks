@@ -48,7 +48,7 @@ class SimulationApp:
         canvas.draw()
 
     def run_next_round(self):
-        if all(agent.done for agent in self.agents):
+        if all(agent.done for agent in self.agents): # or self.current_round == 2*n -2:
             print(">>> Mindenki kész, algoritmus LEÁLL <<<")
             self.next_button.config(state=tk.DISABLED)
             return
