@@ -33,8 +33,6 @@ class HistoryTree:
         self.current_level = -1
         self.red_edges = defaultdict(int) """
 
-    def get_tree(self):
-        return self.G
 
     # merge 
     def merge_trees(self, other_tree):
@@ -156,14 +154,14 @@ class HistoryTree:
 
         return node_map
 
-    def get_path_to_root(graph, node):
-        # Visszaadja a csomópont útvonalát a gyökérig (ancestor chain). 
+
+    #Visszaadja a csomópont útvonalát a gyökérig (ancestor chain).
+    def get_path_to_root(self, node):
         path = []
         # print('get_path_to_root: node: ', node)
-        # print('nodes before ERR: ', graph.G.nodes)
         while node is not None:
-            path.append(graph.G.nodes[node]['label'])  # Az útvonalban a címkét tároljuk
-            predecessors = list(graph.G.predecessors(node))
+            path.append(self.G.nodes[node]['label'])  # Az útvonalban a címkét tároljuk
+            predecessors = list(self.G.predecessors(node))
             node = predecessors[0] if predecessors else None
         return list(reversed(path))  # A gyökértől induló sorrendben
 
