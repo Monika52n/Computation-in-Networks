@@ -344,7 +344,7 @@ class Agent:
         self.myHT_new.add_bottom(self.input_value)
 
         for HT in self.receivedMessages:
-            while len(HT.get_path_to_root(HT.bottom_node)) > 2 and HT.get_max_height() > minHT.get_max_height():
+            while HT.get_max_height() > 1 and HT.get_max_height() > minHT.get_max_height():
                 print('before chop')
                 print(HT.get_max_height())
                 self.chop(HT)

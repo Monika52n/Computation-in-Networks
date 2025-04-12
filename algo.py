@@ -24,7 +24,10 @@ class SimulationApp:
         self.run_next_round()
 
     def generate_dynamic_graph(self):
-        return nx.erdos_renyi_graph(self.n, p=0.5)
+        while True:
+            G = nx.erdos_renyi_graph(n, p=0.5)
+            if nx.is_connected(G):
+                return G
 
     def draw_graph(self, G):
         self.ax.clear()
@@ -32,7 +35,7 @@ class SimulationApp:
         self.canvas.draw()
 
     def run_next_round(self):
-        if all(agent.done for agent in self.agents): # or self.current_round == 2*n -2:
+        if all(agent.done for agent in self.agents): # or self.current_round == 2*n:
             print(">>> Mindenki kész, algoritmus LEÁLL <<<")
             self.next_button.config(state=tk.DISABLED)
             return
