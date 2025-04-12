@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    def __init__(self, root_label, input_value):
+    '''def __init__(self, root_label, input_value):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -20,9 +20,9 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value
+        self.id = input_value'''
 
-    """ def __init__(self, root_label):
+    def __init__(self, root_label):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int) """
+        self.red_edges = defaultdict(int)
 
 
     # merge 
@@ -458,44 +458,40 @@ class HistoryTree:
             pass
         return False'''
 
+
+    def _add_outbound_black_edge(self, source_node, target_node, **edge_data):
+        if not self.G.has_edge(source_node, target_node):
+            self.G.add_edge(source_node, target_node, **edge_data)
+
+    def _combine_outbound_red_edges(self, source_node, target_node, multiplicity):
+        rep_edges_data = self.G.get_edge_data(source_node, target_node)
+
+        bool_black_edges_only = True
+        for re in rep_edges_data:
+            rep_edge_data = rep_edges_data[re]
+            if rep_edge_data.get('color') == 'red':
+                rep_edge_data['multiplicity'] += multiplicity
+                bool_black_edges_only = False
+
+        if not rep_edges_data or (rep_edges_data and bool_black_edges_only):
+            self.G.add_edge(source_node, target_node, color='red', multiplicity=multiplicity)
+
+    def _switch_outbound_edges(self, from_node, to_node):
+        for child in list(self.G.successors(from_node)):
+            edges_data = self.G.get_edge_data(from_node, child)
+            for e in edges_data:
+                edge_data = edges_data[e]
+
+                if edge_data.get('color') == 'black':
+                    self._add_outbound_black_edge(to_node, child, **edge_data)
+
+                if edge_data.get('color') == 'red':
+                    self._combine_outbound_red_edges(to_node, child, edge_data.get('multiplicity', 1))
+
+
     def _merge_nodes(self, representative, node):
-        """Merge node into representative including red edge handling"""
-        # Redirect black edges (children)
-        for child in list(self.G.successors(node)):
-            edge_data = self.G.get_edge_data(node, child)
-            if isinstance(edge_data, dict):  # Handle both single and multi-edge cases
-                edge_data = edge_data[0] if 0 in edge_data else edge_data
-            if edge_data.get('color') == 'black':
-                if not self.G.has_edge(representative, child):
-                    self.G.add_edge(representative, child, **edge_data)
-            
-        # Process inbound red edges (add multiplicities)
-        """ for predecessor in list(self.G.predecessors(node)):
-            edge_data = self.G.get_edge_data(predecessor, node)
-            if edge_data and edge_data.get('color') == 'red':
-                m = edge_data.get('multiplicity', 1)
-                print(f"Bejövő piros él: {predecessor}->{node} (mult={m})")
-                if not self._safe_update_multiplicity(predecessor, representative, m):
-                    self.G.add_edge(predecessor, representative, 
-                                color='red', multiplicity=m) """
-                
-        # Process outbound red edges (add multiplicities)
-        for child in list(self.G.successors(node)):
-            edge_data = self.G.get_edge_data(node, child)
-            if isinstance(edge_data, dict):
-                edge_data = edge_data[0] if 0 in edge_data else edge_data
-            if edge_data.get('color') == 'red':
-                multiplicity = edge_data.get('multiplicity', 1)
-                rep_edge_data = self.G.get_edge_data(representative, child)
-                if rep_edge_data:
-                    if isinstance(rep_edge_data, dict):
-                        rep_edge_data[0]['multiplicity'] += multiplicity
-                    else:
-                        rep_edge_data['multiplicity'] += multiplicity
-                else:
-                    self.G.add_edge(representative, child, color='red', multiplicity=multiplicity)
-            
-        # Finally remove the merged node
+        self._switch_outbound_edges(node, representative)
+
         self.G.remove_node(node)
 
     '''def _merge_nodes2(self, representative, node):
@@ -543,7 +539,6 @@ class HistoryTree:
         for level in levels:
             if level < 0:
                 continue
-            #self.draw_tree(2)
             merged |= self._merge_isomorphic_nodes_at_level(level)
         return merged
 
@@ -557,7 +552,6 @@ class HistoryTree:
 
         for node in level_nodes:
             groups[self._hash_sub_view(node)].append(node)
-            #print(self._hash_sub_view(node))
 
         merged = False
         for group in groups.values():
@@ -598,7 +592,6 @@ class HistoryTree:
             ])
             self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
             self.bottom_node = new_bottom_node
-
 
     def compute_frequencies(self):
         # Itt pl. egy egyszerű számítás lehetne, hogy hány "Input" van a fában
@@ -980,12 +973,14 @@ def test_chop():
     print("Before chop:")
     ht2.draw_tree(2)
 
+    #ht2._merge_nodes('E', 'F')
+
     ht2.chop()
 
     ht2.draw_tree(2)
 
 # Run the test
-#test_chop()
+test_chop()
 
 
 def test_merge_trees2():
