@@ -154,7 +154,7 @@ class HistoryTree:
 
         return node_map
 
-
+    #TODO all_simple_paths(G, source, target, cutoff=None)
     #Visszaadja a csomópont útvonalát a gyökérig (ancestor chain).
     def get_path_to_root(self, node):
         path = []
@@ -255,7 +255,7 @@ class HistoryTree:
         return pos
     
     # chop 
-    def chop2(self):
+    '''def chop2(self):
         if len(self.get_path_to_root(self.bottom_node)) > 2:
             print("\n--- CHOP START ---")
             print("Tree before chop:")
@@ -316,7 +316,7 @@ class HistoryTree:
             print("Tree after chop:")
             print("Nodes:", list(self.G.nodes(data=True)))
             print("Edges:", list(self.G.edges(data=True)))
-            print("--- END ---\n")
+            print("--- END ---\n")'''
     
        
     def chop(self):
@@ -434,7 +434,7 @@ class HistoryTree:
             print("Red edges after chop:", [(u,v,d) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red'])
             print("--- END ---\n")  
 
-    def _safe_update_multiplicity(self, u, v, m):
+    '''def _safe_update_multiplicity(self, u, v, m):
         """Safely update edge multiplicity for any graph type"""
         try:
             # For MultiDiGraph (supports multiple edges between nodes)
@@ -456,7 +456,7 @@ class HistoryTree:
                         return True
         except:
             pass
-        return False
+        return False'''
 
     def _merge_nodes(self, representative, node):
         """Merge node into representative including red edge handling"""
@@ -498,7 +498,7 @@ class HistoryTree:
         # Finally remove the merged node
         self.G.remove_node(node)
 
-    def _merge_nodes2(self, representative, node):
+    '''def _merge_nodes2(self, representative, node):
         """Merge node into representative including red edge handling"""
         # Redirect black edges (children)
         for child in list(self.G.successors(node)):
@@ -534,7 +534,7 @@ class HistoryTree:
                                 multiplicity=multiplicity)
         
         # Finally remove the merged node
-        self.G.remove_node(node)
+        self.G.remove_node(node)'''
 
     def _merge_all_levels(self):
         """Merge nodes with identical sub-views at all levels in a single pass"""
@@ -586,42 +586,19 @@ class HistoryTree:
         sub_view['children'].sort()
         return str(sub_view)
 
-    '''def _hash_sub_view(self, node):
-        """Create a hashable representation of the sub-view rooted at node"""
-        sub_view = {
-            'label': self.G.nodes[node].get('label', ''),
-            'value'
-            'parents': []
-        }
-
-        for p in sorted(self.G.predecessors(node)):
-            edge_data = self.G.edges[p, node, 0]
-            if edge_data.get('color') == 'black':
-                sub_view['parents'].append(('black', self.G.nodes[p].get('label', '')))
-
-        sub_view['parents'].sort()
-        print('sub', sub_view)
-        return str(sub_view)'''
-
     def add_bottom(self, input_value):
-        print('input_value: ', input_value)
-        print('bottom: ', self.bottom_node)
-        print('nodes: ', self.G.nodes)
-
         if len(self.G.nodes) == 1:
             self.__init__('Root', input_value)
         else:
-            this_node = self.G.nodes[self.bottom_node]
-            new_label = f"{self.bottom_node}_m"
+            current_bottom_node = self.G.nodes[self.bottom_node]
+            new_bottom_node = f"{self.bottom_node}_m"
 
             self.G.add_nodes_from([
-                (new_label, {'label': input_value, 'level': this_node['level'] + 1})
+                (new_bottom_node, {'label': input_value, 'level': current_bottom_node['level'] + 1})
             ])
-            self.G.add_edge(self.bottom_node, new_label, color='black')
-            self.bottom_node = new_label
+            self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
+            self.bottom_node = new_bottom_node
 
-    def get_bottom(self):
-        pass
 
     def compute_frequencies(self):
         # Itt pl. egy egyszerű számítás lehetne, hogy hány "Input" van a fában
@@ -942,9 +919,7 @@ def test_red_edges():
     ht2.merge_trees(ht1)
     ht2.draw_tree(2)
 
-
 #test_red_edges()
-
 
 
 def test_chop():
@@ -1008,7 +983,6 @@ def test_chop():
     ht2.chop()
 
     ht2.draw_tree(2)
-
 
 # Run the test
 #test_chop()
