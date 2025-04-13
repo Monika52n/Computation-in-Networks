@@ -34,7 +34,6 @@ class HistoryTree:
         self.red_edges = defaultdict(int)
 
 
-    # merge 
     def merge_trees(self, other_tree):
         node_map = {}
         this_root = self.G.graph['Root']
@@ -154,8 +153,6 @@ class HistoryTree:
 
         return node_map
 
-    #TODO all_simple_paths(G, source, target, cutoff=None)
-    #Visszaadja a csomópont útvonalát a gyökérig (ancestor chain).
     def get_path_to_root(self, node):
         path = []
         # print('get_path_to_root: node: ', node)
@@ -318,121 +315,30 @@ class HistoryTree:
             print("Edges:", list(self.G.edges(data=True)))
             print("--- END ---\n")'''
     
-       
+    def get_nodes_at_level(self, level):
+        res = []
+        for node, attr in self.G.nodes(data=True):
+            if attr['level'] == level:
+                res.append(node)
+        return res
+
+    def _shift_nodes_by_level(self, level):
+        for node, attr in self.G.nodes(data=True):
+            if node != "Root":
+                self.G.nodes[node]['level'] -= level
+
     def chop(self):
         if len(self.get_path_to_root(self.bottom_node)) > 2:
-            print("\n--- CHOP START ---")
-            print("Tree before chop:")
-            print("Nodes:", list(self.G.nodes(data=True)))
-            #print("Edges:", list(self.G.edges(data=True)))
-            red_edges = []
-            for u, v, d in self.G.edges(data=True):
-                if d.get('color') == 'red':
-                    if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
-                        red_edges.append((u, v, d))
-            print("Red edges before chop:", red_edges)
+            self.G.remove_nodes_from(self.get_nodes_at_level(0))
 
-            if not self.G.nodes():
-                return
+            self._shift_nodes_by_level(1)
 
-            # Step 1: Identify L0 nodes (direct children of root)
-            l0_nodes = list(self.G.successors("Root"))
-            
-            # If there are no L0 nodes, nothing to chop
-            if not l0_nodes:
-                return
+            for new_l0_node in self.get_nodes_at_level(0):
+                self.G.add_edge('Root', new_l0_node, color='black')
 
-            # Step 2: Collect edges to preserve and nodes to update
-            edges_to_preserve = {
-                'black': defaultdict(int),
-                'red': defaultdict(int)
-            }
-            nodes_to_update = {}
-
-            for l0_node in l0_nodes:
-                # Collect all edges from L0 nodes
-                for _, neighbor, data in self.G.out_edges(l0_node, data=True):
-                    edge_type = data.get('color', 'black')
-                    if edge_type == 'black':
-                        edges_to_preserve_key = ("Root", neighbor)
-                        edges_to_preserve[edge_type][edges_to_preserve_key] += data.get('multiplicity', 1)
-
-                # Collect all nodes that need level updates
-                for node in nx.dfs_preorder_nodes(self.G, source=l0_node):
-                    current_level = self.G.nodes[node]['level']
-                    nodes_to_update[node] = current_level - 1 if current_level > 0 else current_level
-
-            red_edges = []
-            for u, v, d in self.G.edges(data=True):
-                if d.get('color') == 'red':
-                    if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
-                        red_edges.append((u, v, d))
-            print("Red edges after step 2:", red_edges)
-            #print("\nEdges to preserve:")
-            #print("Black:", dict(edges_to_preserve['black']))
-            #print("Red:", dict(edges_to_preserve['red']))
-            
-            """ red_edge_preserve = defaultdict(int)
-            for u, v, data in self.G.edges(data=True):
-                if data.get('color') == 'red' and u != 'Root' and v != 'Root':
-                    red_edge_preserve[(u, v)] += data.get('multiplicity', 1)
-            print("Red:", dict(red_edge_preserve)) """
-            
-            # Step 3: Remove only L0 nodes that have children (to prevent complete tree deletion)
-            l0_nodes_to_remove = [node for node in l0_nodes if any(self.G.out_edges(node))]
-            self.G.remove_nodes_from(l0_nodes_to_remove)
-            red_edges = []
-            for u, v, d in self.G.edges(data=True):
-                if d.get('color') == 'red':
-                    if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
-                        red_edges.append((u, v, d))
-            print("Red edges after step 3:", red_edges)
-
-            # Step 4: Update levels for remaining nodes
-            for node, new_level in nodes_to_update.items():
-                if node in self.G.nodes and node != "Root":
-                    self.G.nodes[node]['level'] = new_level
-            print("Red edges after step 4:", [(u,v,d) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red'])
-
-            # Step 5: Restore all edges carefully
-            """ for (u, v), m in red_edge_preserve.items():
-                if self.G.has_node(u) and self.G.has_node(v):
-                    if not self._safe_update_multiplicity(u, v, m):
-                        self.G.add_edge(u, v, color='red', multiplicity=m)
-                    print(f"Piros él visszaállítva: {u}->{v} (mult={m})") """
-            
-            for (u, v), m in edges_to_preserve['black'].items():
-                if v in self.G.nodes and (u == "Root" or u in self.G.nodes):
-                    if not self.G.has_edge(u, v):
-                        print(f"Adding edge: {u} -> {v}, color: {'black'}, multiplicity: {m}")  # Debugging print
-                        self.G.add_edge(u, v, color='black', multiplicity=m)
-                else:
-                    print(f"Edge ({u}, {v}) skipped. Conditions not met.")
-            
-            for (u, v), m in edges_to_preserve['red'].items():
-                if v in self.G.nodes and (u == "Root" or u in self.G.nodes):
-                    if not self.G.has_edge(u, v):
-                        self.G.add_edge(u, v, color='red', multiplicity=m)
-                    else:
-                        edge_data = self.G.get_edge_data(u, v)
-                        if edge_data:  # Edge exists
-                            if isinstance(edge_data, dict):  # Multi-edge case
-                                edge_data[0]['multiplicity'] += m
-                        else:  # Edge doesn't exist
-                            self.G.add_edge(u, v, color=edge_type, multiplicity=m)
-                    
-            print("Red edges after step 5:", [(u,v,d) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red'])
-            
-            # Step 6: Merge isomorphic nodes
             while self._merge_all_levels():
                 pass
-                
-            print("--- CHOP END ---")
-            print("Tree after chop:")
-            print("Nodes:", list(self.G.nodes(data=True)))
-            # print("Edges:", list(self.G.edges(data=True)))
-            print("Red edges after chop:", [(u,v,d) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red'])
-            print("--- END ---\n")  
+
 
     '''def _safe_update_multiplicity(self, u, v, m):
         """Safely update edge multiplicity for any graph type"""
@@ -487,7 +393,6 @@ class HistoryTree:
 
                 if edge_data.get('color') == 'red':
                     self._combine_outbound_red_edges(to_node, child, edge_data.get('multiplicity', 1))
-
 
     def _merge_nodes(self, representative, node):
         self._switch_outbound_edges(node, representative)
@@ -743,8 +648,7 @@ def test_ht2_chop():
     ht2.bottom_node = "N"
     ht2.current_level = 5
 
-    print("Before chop:")
-    ht2.draw_tree()
+    ht2.draw_tree(1)
     
     ht2.chop()
     
@@ -759,7 +663,7 @@ def test_ht2_chop():
         print(f"{edge_type} edge {u} -> {v} (multiplicity={mult})")
     
     print("\nAfter chop:")
-    ht2.draw_tree()
+    ht2.draw_tree(1)
 
 # Run the test
 #test_ht2_chop()
@@ -980,7 +884,7 @@ def test_chop():
     ht2.draw_tree(2)
 
 # Run the test
-test_chop()
+#test_chop()
 
 
 def test_merge_trees2():
@@ -1027,6 +931,12 @@ def test_merge_trees2():
 #test_merge_trees2()
 
 
-
+'''            
+red_edges = []
+for u, v, d in self.G.edges(data=True):
+    if d.get('color') == 'red':
+        if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
+            red_edges.append((u, v, d))
+print("Red edges after step 3:", red_edges)'''
 
 
