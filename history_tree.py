@@ -33,123 +33,121 @@ class HistoryTree:
         self.current_level = -1
         self.red_edges = defaultdict(int)
 
+    def _get_edge_if_exists(self, from_node, to_node, color):
+        edges_data = self.G.get_edge_data(from_node, to_node)
+        if edges_data is not None:
+            for edge, attr in edges_data.items():
+                if attr['color'] == color:
+                    return edges_data[edge]
+        return None
+
+    def _increase_red_edge_multiplicity(self, from_node, to_node, edge, multiplicity=1):
+        self.red_edges[(from_node, to_node)] += multiplicity
+        edge['multiplicity'] += multiplicity
+
+    def _add_red_edge(self, from_node, to_node, multiplicity=1):
+        existing_edge = self._get_edge_if_exists(from_node, to_node, color='red')
+        if existing_edge is not None:
+            self._increase_red_edge_multiplicity(from_node, to_node, existing_edge, multiplicity)
+        else:
+            self.red_edges[(from_node, to_node)] += multiplicity
+            self.G.add_edge(from_node, to_node, color='red', multiplicity=multiplicity)
+
+    def _check_if_nodes_match(self, this_node, other_node, other_tree):
+        this_label = self.G.nodes[this_node]['label']
+        other_label = other_tree.G.nodes[other_node]['label']
+        this_path = self.get_path_to_root(this_node)
+        other_path = other_tree.get_path_to_root(other_node)
+        return this_path == other_path and this_label == other_label
+
+    def _combine_inbound_red_edges(self, this_node, other_node, other_tree):
+        for other_in_edge in other_tree.G.in_edges(other_node, data=True):
+            bool_red_edge_in_main_tree_exists = False
+
+            for this_in_edge in self.G.in_edges(this_node, data=True):
+                if this_in_edge[2]['color'] == 'red' and other_in_edge[2]['color'] == 'red':
+                    if self._check_if_nodes_match(this_in_edge[0], other_in_edge[0], other_tree): #check if source nodes match
+                        self._add_red_edge(this_in_edge[0], this_node, other_in_edge[2]['multiplicity'])
+                        bool_red_edge_in_main_tree_exists = True
+
+            if not bool_red_edge_in_main_tree_exists and other_in_edge[2]['color'] == 'red':
+                for source_node in self.G.nodes():
+                    if self._check_if_nodes_match(source_node, other_in_edge[0], other_tree):
+                        self._add_red_edge(source_node, this_node, other_in_edge[2]['multiplicity'])
+
+
+    def match_node_into_level(self, this_level_nodes, other_node, other_tree, node_map):
+        matched = False
+        for this_node in this_level_nodes:
+            this_path = self.get_path_to_root(this_node)
+            other_path = other_tree.get_path_to_root(other_node)
+
+            if this_path == other_path:
+                matched = True
+                node_map[other_node] = this_node
+                self._combine_inbound_red_edges(this_node, other_node, other_tree)
+                break
+
+        return matched
+
+    def _find_child_with_label(self, parent_node, label):
+        child = None
+        for c in self.G.successors(parent_node):
+            if self.G.nodes[c]['label'] == label:
+                child = c
+        return child
+
+
+    def _mark_interaction_with_red_edge(self, other_tree):
+        old_bottom_node = self.G.nodes[self.bottom_node]
+        self.add_bottom(old_bottom_node['label'])
+
+        for other_bottom_node_pair in self.G.nodes():
+            bool_match = self._check_if_nodes_match(other_bottom_node_pair, other_tree.bottom_node, other_tree)
+            if bool_match:
+                self.red_edges[(other_bottom_node_pair, self.bottom_node)] += 1
+                self.G.add_edge(other_bottom_node_pair, self.bottom_node, color='red', multiplicity=1)
 
     def merge_trees(self, other_tree):
         node_map = {}
-        this_root = self.G.graph['Root']
-        other_root = other_tree.G.graph['Root']
-        node_map[other_root] = this_root
-
-        new_nodes = []
+        node_map[other_tree.G.graph['Root']] = self.G.graph['Root']
 
         for level in range(-1, min(self.current_level, other_tree.current_level) + 1):
             this_level_nodes = [n for n, attr in self.G.nodes(data=True) if attr['level'] == level]
             other_level_nodes = [n for n, attr in other_tree.G.nodes(data=True) if attr['level'] == level]
 
             for other_node in other_level_nodes:
-                if other_node in node_map:
-                    continue
+                if other_node not in node_map:
+                    matched = self.match_node_into_level(this_level_nodes, other_node, other_tree, node_map)
 
-                other_attrs = other_tree.G.nodes[other_node]
-                other_parent = next(other_tree.G.predecessors(other_node), None)
+                    if not matched:
+                        other_attrs = other_tree.G.nodes[other_node]
+                        other_parent = next(other_tree.G.predecessors(other_node), None)
 
-                other_path = other_tree.get_path_to_root(other_node)
-                matched = False
-                for this_node in this_level_nodes:
-                    this_attrs = self.G.nodes[this_node]
-                    this_parent = next(self.G.predecessors(this_node), None)
+                        if other_parent and other_parent in node_map:
+                            this_parent = node_map[other_parent]
 
-                    # Útvonal-ellenőrzés
-                    this_path = self.get_path_to_root(this_node)
+                            matching_child = self._find_child_with_label(this_parent, other_attrs['label'])
+                            node_to_check_for_red_edge = None
 
-                    if this_path == other_path:
-                        for this_out_edge in self.G.out_edges(this_node, data=True):
-                            for other_out_edge in other_tree.G.out_edges(other_node, data=True):
-                                this_target_path = self.get_path_to_root(this_out_edge[1])
-                                other_target_path = other_tree.get_path_to_root(other_out_edge[1])
-
-                                if this_target_path == other_target_path:
-                                    if this_out_edge[2]['color'] == 'red' and other_out_edge[2]['color'] == 'red':
-                                        self.red_edges[(this_node, this_out_edge[1])] += other_out_edge[2]['multiplicity']
-                                        this_out_edge[2]['multiplicity'] += other_out_edge[2]['multiplicity']
-
-                        for other_out_edge in other_tree.G.out_edges(other_node, data=True):
-                            if other_out_edge[2]['color'] == 'red':
-                                other_target_path = other_tree.get_path_to_root(other_out_edge[1])
-                                for node in self.G.nodes():
-                                    this_target_path = self.get_path_to_root(node)
-                                    if this_target_path == other_target_path:
-                                        self.red_edges[(this_node, node)] += 1
-                                        self.G.add_edge(this_node, node, color='red', multiplicity=self.red_edges[(this_node, node)])
-
-
-                        # print(f"Skipping {other_node}, because the path matches an existing node: {this_node}")
-                        node_map[other_node] = this_node
-                        matched = True
-                        break
-
-                if not matched:
-                    # Ha nem találtunk egyező útvonalat, létrehozunk egy új csomópontot
-
-                    if other_parent and other_parent in node_map:
-                        parent_mapped = node_map[other_parent]
-
-                        # Ellenőrizzük, hogy van-e már ilyen értékű gyermek
-                        existing_children = list(self.G.successors(parent_mapped))
-                        duplicate_found = any(self.G.nodes[child]['label'] == other_attrs['label'] for child in existing_children)
-
-
-                        node_to_check_for_in_edge = None
-                        if duplicate_found:
-                            print(f"Skipping {other_node}, because an identical labeled child already exists under {parent_mapped}")
-                            node_map[other_node] = next(child for child in existing_children if self.G.nodes[child]['label'] == other_attrs['label'])
-                            node_to_check_for_in_edge = parent_mapped
-                        else:
-                            new_node = f"{other_node}_m"
-                            print(f"Creating new node {new_node} for {other_node}")
-
-                            if parent_mapped != new_node:
-                                self.G.add_node(new_node, label=other_attrs['label'], level=other_attrs['level'])
-                                node_map[other_node] = new_node
-
-                                print(f"Adding edge from {parent_mapped} to {new_node}")
-                                self.G.add_edge(parent_mapped, new_node, color='black')
-
-                                new_nodes.append(new_node)
-                                node_to_check_for_in_edge = new_node
+                            if matching_child is not None:
+                                node_map[other_node] = matching_child
+                                node_to_check_for_red_edge = matching_child
                             else:
-                                print(f"WARNING: Self-loop detected and avoided: {parent_mapped} -> {new_node}")
+                                new_node = f"{other_node}_m"
 
+                                if this_parent != new_node:
+                                    self.G.add_node(new_node, label=other_attrs['label'], level=other_attrs['level'])
+                                    self.G.add_edge(this_parent, new_node, color='black')
 
-                        for other_out_edge in other_tree.G.in_edges(other_node, data=True):
-                            if other_out_edge[2]['color'] == 'red':
-                                other_source_path = other_tree.get_path_to_root(other_out_edge[0])
-                                for node in self.G.nodes():
-                                    this_source_path = self.get_path_to_root(node)
-                                    if this_source_path == other_source_path and node_to_check_for_in_edge is not None:
-                                        self.red_edges[(node, node_to_check_for_in_edge)] += 1
-                                        self.G.add_edge(node, node_to_check_for_in_edge, color = 'red', multiplicity=self.red_edges[(node, node_to_check_for_in_edge)])
+                                    node_map[other_node] = new_node
+                                    node_to_check_for_red_edge = new_node
+                                else:
+                                    print(f"WARNING: Self-loop detected and avoided: {this_parent} -> {new_node}")
 
+                            self._combine_inbound_red_edges(node_to_check_for_red_edge, other_node, other_tree)
 
-        #if other_tree.bottom_node in node_map:
-        mapped_bottom = node_map[other_tree.bottom_node]
-        new_bottom_node = f"{self.bottom_node}_m"
-        this_bottom_node = self.G.nodes[self.bottom_node]
-
-        #Add new node that is the same as old bottom node, and is the child of the old bottom node (black edge)
-        self.G.add_nodes_from([
-            (new_bottom_node, {'label': this_bottom_node['label'], 'level': this_bottom_node['level'] + 1})
-        ])
-        self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
-
-        #predecessors = list(self.G.predecessors(new_bottom_node))
-        #if predecessors[0] != mapped_bottom:
-        self.red_edges[(mapped_bottom, new_bottom_node)] += 1
-        self.G.add_edge(mapped_bottom, new_bottom_node, color='red', multiplicity=self.red_edges[(mapped_bottom, new_bottom_node)])
-        self.bottom_node = new_bottom_node
-        '''else:
-            self.G.remove_node(new_bottom_node)'''
-
+        self._mark_interaction_with_red_edge(other_tree)
 
         return node_map
 
@@ -332,6 +330,7 @@ class HistoryTree:
             self.G.remove_nodes_from(self.get_nodes_at_level(0))
 
             self._shift_nodes_by_level(1)
+            self.current_level -= 1
 
             for new_l0_node in self.get_nodes_at_level(0):
                 self.G.add_edge('Root', new_l0_node, color='black')
@@ -365,7 +364,7 @@ class HistoryTree:
         return False'''
 
 
-    def _add_outbound_black_edge(self, source_node, target_node, **edge_data):
+    def _add_black_edge(self, source_node, target_node, **edge_data):
         if not self.G.has_edge(source_node, target_node):
             self.G.add_edge(source_node, target_node, **edge_data)
 
@@ -376,11 +375,11 @@ class HistoryTree:
         for re in rep_edges_data:
             rep_edge_data = rep_edges_data[re]
             if rep_edge_data.get('color') == 'red':
-                rep_edge_data['multiplicity'] += multiplicity
+                self._add_red_edge(source_node, target_node, multiplicity)
                 bool_black_edges_only = False
 
         if not rep_edges_data or (rep_edges_data and bool_black_edges_only):
-            self.G.add_edge(source_node, target_node, color='red', multiplicity=multiplicity)
+            self._add_red_edge(source_node, target_node, multiplicity)
 
     def _switch_outbound_edges(self, from_node, to_node):
         for child in list(self.G.successors(from_node)):
@@ -389,7 +388,7 @@ class HistoryTree:
                 edge_data = edges_data[e]
 
                 if edge_data.get('color') == 'black':
-                    self._add_outbound_black_edge(to_node, child, **edge_data)
+                    self._add_black_edge(to_node, child, **edge_data)
 
                 if edge_data.get('color') == 'red':
                     self._combine_outbound_red_edges(to_node, child, edge_data.get('multiplicity', 1))
@@ -556,6 +555,7 @@ def test_merge_trees():
     ht2.draw_tree(2)
     
     print("Merging trees...")
+
     ht1.merge_trees(ht2)
     ht1.draw_tree(1)
 
@@ -582,7 +582,7 @@ def test_complex_merge():
         ("A", "D", {'color': 'black'}),
         ("C", "E", {'color': 'black'}),
         ("D", "F", {'color': 'black'}),
-        ("E", "G", {'color': 'black'})
+        ("E", "G", {'color': 'black'}),
     ])
     ht1.bottom_node = "G"
     ht1.current_level = 3
@@ -606,7 +606,8 @@ def test_complex_merge():
         ("J", "K", {'color': 'black'}),
         ("I", "L", {'color': 'black'}),
         ("K", "M", {'color': 'black'}),
-        ("L", "N", {'color': 'black'})
+        ("L", "N", {'color': 'black'}),
+
     ])
     ht2.bottom_node = "M"
     ht2.current_level = 3
@@ -616,7 +617,7 @@ def test_complex_merge():
     ht1.merge_trees(ht2)
     ht1.draw_tree(1)
 
-#test_complex_merge()
+test_complex_merge()
 
 ################### tests chop
 def test_ht2_chop():
@@ -666,102 +667,6 @@ def test_ht2_chop():
     ht2.draw_tree(1)
 
 # Run the test
-#test_ht2_chop()
-
-def test_linear_tree_chop():
-    # Initialize history tree with root
-    tree = HistoryTree("Root")
-    
-    # Build the specified tree structure
-    tree.G.add_nodes_from([
-        ('Root', {'label': 'Root', 'level': -1}),
-        ('a0', {'label': 'a', 'level': 0}),
-        ('b0', {'label': 'b', 'level': 0}),
-        ('c0', {'label': 'c', 'level': 0}),
-        ('a1', {'label': 'a', 'level': 1}),
-        ('b1', {'label': 'b', 'level': 1}),
-        ('b1_2', {'label': 'b', 'level': 1}),
-        ('a2', {'label': 'a', 'level': 2}),
-        ('b2', {'label': 'b', 'level': 2}),
-        ('b2_2', {'label': 'b', 'level': 2}),
-        ('a3', {'label': 'a', 'level': 3})
-    ])
-    
-    # Add black edges
-    tree.G.add_edges_from([
-        ("Root", "a0", {'color': 'black'}),
-        ("Root", "b0", {'color': 'black'}),
-        ("Root", "c0", {'color': 'black'}),
-        ("a0", "a1", {'color': 'black'}),
-        ("b0", "b1", {'color': 'black'}),
-        ("c0", "b1_2", {'color': 'black'}),
-        ("a1", "a2", {'color': 'black'}),
-        ("b1", "b2", {'color': 'black'}),
-        ("b1_2", "b2_2", {'color': 'black'}),
-        ("a2", "a3", {'color': 'black'})
-    ])
-    
-    # Add some red edges for testing
-    tree.G.add_edges_from([
-        ("a0", "b1", {'color': 'red', 'multiplicity': 2}),
-        ("b0", "a1", {'color': 'red', 'multiplicity': 1}),
-        ("c0", "b2", {'color': 'red', 'multiplicity': 1})
-    ])
-    
-    tree.bottom_nodes = ['a3']
-    tree.current_level = 3
-
-    print("Initial Tree Structure:")
-    _safe_draw_tree(tree.G)  # Use safe visualization
-    
-    # Perform chop operation
-    print("\nPerforming chop operation...")
-    tree.chop()
-
-    
-    print("\nDetailed Node Information (After Chop):")
-    for node, data in tree.G.nodes(data=True):
-        print(f"Node {node}: label={data['label']}, level={data['level']}")
-    
-    print("\nDetailed Edge Information (After Chop):")
-    for u, v, data in tree.G.edges(data=True):
-        edge_type = "BLACK" if data.get('color') == 'black' else "red"
-        mult = data.get('multiplicity', 1)
-        print(f"{edge_type} edge {u} -> {v} (multiplicity={mult})")
-
-    tree.draw_tree()
-    # Verification
-    print("\nVerification:")
-
-    # Check level 0 nodes were removed
-    assert not any(data['level'] == 0 and node not in ['a1', 'b1', 'b1_2'] 
-                for node, data in tree.G.nodes(data=True)), "Old level 0 nodes were not removed"
-
-    # Check former level 1 nodes are now level 0
-    for node in ['a1', 'b1', 'b1_2']:
-        if node in tree.G.nodes():
-            assert tree.G.nodes[node]['level'] == 0, f"Node {node} level update failed"
-
-    # Check level consistency
-    for node, data in tree.G.nodes(data=True):
-        if node == 'Root':
-            continue
-        parents = list(tree.G.predecessors(node))
-        if parents:
-            parent_level = tree.G.nodes[parents[0]]['level']
-            assert data['level'] == parent_level + 1, \
-                f"Level mismatch at {node} (has {data['level']}, parent has {parent_level})"
-
-    # Check red edges were preserved
-    red_edges = [(u, v, d['multiplicity']) for u, v, d in tree.G.edges(data=True) 
-                if d.get('color') == 'red']
-    assert len(red_edges) >= 2, f"Expected at least 2 red edges, found {len(red_edges)}"
-    print("Preserved red edges:")
-    for u, v, m in red_edges:
-        print(f"  {u} -> {v} (multiplicity={m})")
-    
-    print("\nAll tests passed!")
-
 def _safe_draw_tree(G):
     """Safe visualization that handles missing nodes"""
     try:
@@ -901,7 +806,7 @@ def test_merge_trees2():
         ("Root", "A1", {'color': 'black'}),
         ("Root", "B1", {'color': 'black'}),
         ("A1", "C1", {'color': 'black'}),
-        ("B1", "C1", {'color': 'red', 'multiplicity': 1}),
+        ("B1", "C1", {'color': 'red', 'multiplicity': 2}),
     ])
     ht1.bottom_node = "C1"
     ht1.current_level = 1
@@ -925,8 +830,8 @@ def test_merge_trees2():
     ht2.draw_tree(2)
 
     print("Merging trees...")
-    ht2.merge_trees(ht1)
-    ht2.draw_tree(2)
+    ht1.merge_trees(ht2)
+    ht1.draw_tree(2)
 
 #test_merge_trees2()
 
