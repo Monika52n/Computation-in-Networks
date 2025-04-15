@@ -1,6 +1,7 @@
 from history_tree import HistoryTree
 from collections import defaultdict
 import numpy as np
+from copy import deepcopy
 
 class Agent:
 
@@ -9,7 +10,7 @@ class Agent:
         self.input_value = input_value  # Agent's input
         self.receivedMessages = []
         self.myHT = HistoryTree('Root', self.input_value)
-        self.myHT_new = self.myHT
+        self.myHT_new = deepcopy(self.myHT)
         self.done = False
 
     def input(self):
@@ -318,51 +319,42 @@ class Agent:
         return frequencies
 
     def update_ht(self):
-        self.myHT = self.myHT_new
+        self.myHT = deepcopy(self.myHT_new)
 
     def main(self, neighbors):
-        print(f"Length {len(self.receivedMessages)}")
-
         self.other_readies = []
-        
-        if self.myHT_new.get_max_height() > 2 * self.n - 2:
-            self.myHT_new = HistoryTree('Root', self.input_value)
+
+        print('MAX height: ', self.myHT.get_max_height())
+        if self.myHT.get_max_height() > 2 * self.n - 2:
+            self.myHT_new = deepcopy(HistoryTree('Root', self.input_value))
 
         for neighbor in neighbors:
             #neighbor.receive_from_neighbor(self.send_to_neighbor()) #sending current ht to all neighbors
             self.receive_from_neighbor(neighbor.send_to_neighbor()) #receiving ht from all neighbors
-        
+
+        print(f"Length of received messages {len(self.receivedMessages)}")
+        print('Input value: ', self.input_value)
+
         allMessages = self.receivedMessages + [self.myHT]
         minHT = min(allMessages, key=lambda ht: ht.get_max_height())
 
         while len(self.myHT_new.get_path_to_root(self.myHT_new.bottom_node)) > 2 and self.myHT_new.get_max_height() > minHT.get_max_height():
             self.chop(self.myHT_new)
 
-        print('chop 1')
-
-        # Add a new bottom to the history tree
         self.myHT_new.add_bottom(self.input_value)
 
         for HT in self.receivedMessages:
             while HT.get_max_height() > 1 and HT.get_max_height() > minHT.get_max_height():
-                print('before chop')
-                print(HT.get_max_height())
                 self.chop(HT)
-                print('chop ok')
-                print(HT.get_max_height())
             self.myHT_new.merge_trees(HT)
-            print('merge ok')
-
-        #self.myHT_new.draw_tree()
-        print('chop 2')
 
         if self.myHT_new.get_max_height() == 2 * self.n - 1:
-            print('before chop 3')
             self.chop(self.myHT_new)
-            print('after chop 3')
 
         self.receivedMessages = []
-        
+
+        #self.myHT_new.draw_tree(self.input_value)
+
         frequencies = None
         try: 
             frequencies = self.compute_frequencies(self.myHT_new)

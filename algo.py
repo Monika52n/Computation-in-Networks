@@ -25,7 +25,7 @@ class SimulationApp:
 
     def generate_dynamic_graph(self):
         while True:
-            G = nx.erdos_renyi_graph(n, p=0.5)
+            G = nx.erdos_renyi_graph(n, p=0.8)
             if nx.is_connected(G):
                 return G
 
@@ -51,16 +51,19 @@ class SimulationApp:
             print('-----------------------------------------------------------')
 
         for i, agent in enumerate(self.agents):
-            #agent.myHT.draw_tree()
+            '''if i == 0:
+                agent.myHT.draw_tree(i)
+                agent.myHT_new.draw_tree(1)'''
             agent.update_ht()
             agent.myHT.draw_tree(i)
+
 
         self.current_round += 1
 
 
 if __name__ == "__main__":
-    #agents_inputs = [1, 0, 0, 1, 1, 0, 0, 1]
-    agents_inputs = [1, 0, 0, 0]
+    agents_inputs = [1, 0, 0, 0, 0, 0, 0, 0]
+    #agents_inputs = [1, 0, 0, 1]
     n = len(agents_inputs)
 
     root = tk.Tk()
