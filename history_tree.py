@@ -168,8 +168,6 @@ class HistoryTree:
             node = predecessors[0] if predecessors else None
         return list(reversed(path))  # A gyökértől induló sorrendben
 
-
-
     def draw_tree(self, num, ax):
         try:
             # Create a consistent layout
