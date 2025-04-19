@@ -324,7 +324,6 @@ class Agent:
     def main(self, neighbors):
         self.other_readies = []
 
-        print('MAX height: ', self.myHT.get_max_height())
         if self.myHT.get_max_height() > 2 * self.n - 2:
             self.myHT_new = deepcopy(HistoryTree('Root', self.input_value))
 
@@ -354,6 +353,7 @@ class Agent:
         self.receivedMessages = []
 
         #self.myHT_new.draw_tree(self.input_value)
+        print('MAX height: ', self.myHT_new.get_max_height())
 
         frequencies = None
         try: 

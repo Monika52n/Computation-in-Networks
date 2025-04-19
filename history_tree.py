@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    '''def __init__(self, root_label, input_value):
+    def __init__(self, root_label, input_value):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -20,9 +20,9 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value'''
+        self.id = input_value
 
-    def __init__(self, root_label):
+    '''def __init__(self, root_label):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int)
+        self.red_edges = defaultdict(int)'''
 
     def _get_edge_if_exists(self, from_node, to_node, color):
         edges_data = self.G.get_edge_data(from_node, to_node)
