@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 class HistoryTree:
-    def __init__(self, root_label, input_value):
+    '''def __init__(self, root_label, input_value):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -20,9 +20,9 @@ class HistoryTree:
         self.bottom_node = f'N_{input_value}'
         self.current_level = 1
         self.red_edges = defaultdict(int)
-        self.id = input_value
+        self.id = input_value'''
 
-    '''def __init__(self, root_label):
+    def __init__(self, root_label):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +31,7 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int)'''
+        self.red_edges = defaultdict(int)
 
     def _get_edge_if_exists(self, from_node, to_node, color):
         edges_data = self.G.get_edge_data(from_node, to_node)
@@ -338,6 +338,8 @@ class HistoryTree:
             while self._merge_all_levels():
                 pass
 
+            self.current_level = self.G.nodes[self.bottom_node]['level']
+
 
     '''def _safe_update_multiplicity(self, u, v, m):
         """Safely update edge multiplicity for any graph type"""
@@ -497,6 +499,8 @@ class HistoryTree:
             self.G.add_edge(self.bottom_node, new_bottom_node, color='black')
             self.bottom_node = new_bottom_node
 
+            self.current_level = self.G.nodes[self.bottom_node]['level']
+
     def compute_frequencies(self):
         # Itt pl. egy egyszerű számítás lehetne, hogy hány "Input" van a fában
         input_count = sum(1 for node, attr in self.G.nodes(data=True) if attr['label'] == 'Input')
@@ -504,7 +508,7 @@ class HistoryTree:
 
     def get_max_height(self):
         #return nx.dag_longest_path_length(self.G, 'Root') if self.G.nodes else 0
-        return len(self.get_path_to_root(self.bottom_node))
+        return len(self.get_path_to_root(self.bottom_node)) - 1 #-1 for Root
 
 
 ################### tests merge
@@ -837,12 +841,67 @@ def test_merge_trees2():
 #test_merge_trees2()
 
 
-'''            
-red_edges = []
-for u, v, d in self.G.edges(data=True):
-    if d.get('color') == 'red':
-        if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
-            red_edges.append((u, v, d))
-print("Red edges after step 3:", red_edges)'''
+def test_max_height():
+    ht2 = HistoryTree("Root")  # This will create root node named 'root' with label 'Root'
+    ht2.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('A', {'label': '0', 'level': 0}),
+        ('B', {'label': '1', 'level': 0}),
+        ('C', {'label': '2', 'level': 0}),
 
+        ('D', {'label': '0', 'level': 1}),
+        ('E', {'label': '1', 'level': 1}),
+        ('F', {'label': '1', 'level': 1}),
 
+        ('G', {'label': '0', 'level': 2}),
+        ('H', {'label': '1', 'level': 2}),
+        ('I', {'label': '1', 'level': 2}),
+
+        ('J', {'label': '0', 'level': 3})
+
+    ])
+    ht2.G.add_edges_from([
+        ("Root", "A", {'color': 'black'}),
+        ("Root", "B", {'color': 'black'}),
+        ("Root", "C", {'color': 'black'}),
+
+        ("A", "D", {'color': 'black'}),
+        ("B", "E", {'color': 'black'}),
+        ("B", "F", {'color': 'black'}),
+
+        ("D", "G", {'color': 'black'}),
+        ("E", "H", {'color': 'black'}),
+        ("F", "I", {'color': 'black'}),
+
+        ("G", "J", {'color': 'black'}),
+
+        ###
+        ("J", "I", {'color': 'black'}),
+
+        ("A", "E", {'color': 'red', 'multiplicity': 1}),
+        ("B", "D", {'color': 'red', 'multiplicity': 1}),
+        ("C", "E", {'color': 'red', 'multiplicity': 1}),
+        ("C", "F", {'color': 'red', 'multiplicity': 1}),
+
+        ("E", "G", {'color': 'red', 'multiplicity': 1}),
+        ("E", "H", {'color': 'red', 'multiplicity': 2}),
+        ("E", "I", {'color': 'red', 'multiplicity': 1}),
+        ("F", "I", {'color': 'red', 'multiplicity': 1}),
+
+        ("H", "J", {'color': 'red', 'multiplicity': 1}),
+        ("I", "J", {'color': 'red', 'multiplicity': 2}),
+
+    ])
+    ht2.bottom_node = "J"
+    ht2.current_level = 4
+
+    ht2.draw_tree(2)
+
+    ht2.chop()
+
+    ht2.draw_tree(1)
+    print('Max height: ', ht2.get_max_height())
+    print('Current level: ', ht2.current_level)
+    print('Bottom node level: ', ht2.G.nodes[ht2.bottom_node]['level'])
+
+#test_max_height()
