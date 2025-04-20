@@ -157,6 +157,10 @@ class HistoryTree:
         while node is not None:
             path.append(self.G.nodes[node]['label'])  # Az útvonalban a címkét tároljuk
             predecessors = list(self.G.predecessors(node))
+            for edge in self.G.edges(data=True):
+                for p in predecessors:
+                    if edge[0] == p and edge[1] == node and edge[2]['color'] == 'red':
+                        predecessors.remove(p)
             node = predecessors[0] if predecessors else None
         return list(reversed(path))  # A gyökértől induló sorrendben
 
@@ -905,3 +909,35 @@ def test_max_height():
     print('Bottom node level: ', ht2.G.nodes[ht2.bottom_node]['level'])
 
 #test_max_height()
+
+
+def test_path_to_root():
+    ht2 = HistoryTree("Root")  # This will create root node named 'root' with label 'Root'
+    ht2.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('A', {'label': '0', 'level': 0}),
+        ('B', {'label': '1', 'level': 1}),
+
+        ('C', {'label': '1', 'level': 0}),
+    ])
+    ht2.G.add_edges_from([
+        ("Root", "A", {'color': 'black'}),
+        ("Root", "C", {'color': 'black'}),
+
+        #("A", "D", {'color': 'black'}),
+        ("A", "B", {'color': 'red', 'multiplicity': 1}),
+        ("C", "B", {'color': 'black'}),
+
+    ])
+    ht2.bottom_node = "B"
+    ht2.current_level = 1
+
+    ht2.draw_tree(2)
+
+    print('Path to root: ', ht2.get_path_to_root(ht2.bottom_node))
+
+    print('Max height: ', ht2.get_max_height())
+    print('Current level: ', ht2.current_level)
+    print('Bottom node level: ', ht2.G.nodes[ht2.bottom_node]['level'])
+
+#test_path_to_root()
