@@ -62,8 +62,8 @@ class SimulationApp:
 
 
 if __name__ == "__main__":
-    #agents_inputs = [1, 0, 0, 0, 0, 0, 0, 0]
-    agents_inputs = [1, 0, 0, 1]
+    agents_inputs = [1, 0, 0, 0, 0, 0, 0, 0]
+    #agents_inputs = [1, 0, 0, 1]
     n = len(agents_inputs)
 
     root = tk.Tk()
