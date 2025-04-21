@@ -18,15 +18,26 @@ class SimulationApp:
         self.current_round = 0
         self.agents = [Agent(n, input_value) for input_value in agents_inputs]
         self.graph_collection = GraphCollection()
+        self.done = False
 
     def generate_dynamic_graph(self):
         self.G = nx.erdos_renyi_graph(self.n, p=0.5)
     
     def get_graph_collection(self):
         return self.graph_collection
+    
+    def get_done(self):
+        return self.done
+    
+    def get_outputs(self):
+        outputs = {}
+        for i, agent in enumerate(self.agents):
+            outputs[i] = agent.get_output()
+        return outputs
 
     def run_next_round(self):
         if all(agent.done for agent in self.agents): # or self.current_round == 2*n -2:
+            self.done = True
             print(">>> Mindenki kész, algoritmus LEÁLL <<<")
             return
         
@@ -57,11 +68,12 @@ if __name__ == "__main__":
     root.withdraw()
 
     try:
-        n = simpledialog.askinteger("Input", "Number of agents:")
+        title = "Universal self-stabilizing finite-state algorithm"
+        n = simpledialog.askinteger(title, "Number of agents:")
         if n is None or n <= 0:
             raise ValueError("Operation cancelled.")
 
-        num_zeros = simpledialog.askinteger("Input", f"How many of the {n} agents should have the input of 0?")
+        num_zeros = simpledialog.askinteger(title, f"How many of the {n} agents should have the input of 0?")
         if num_zeros is None:
             raise ValueError("Operation cancelled.")
         if num_zeros > n or num_zeros < 0:
@@ -71,10 +83,9 @@ if __name__ == "__main__":
         random.shuffle(agents_inputs)
 
         root.deiconify()
-        root.title("Universal self-stabilizing finite-state algorithm")
         root.state("zoomed") 
         simulationApp = SimulationApp(n, agents_inputs)
-        graphViewer = GraphViewer(root, simulationApp)
+        graphViewer = GraphViewer(root, simulationApp, title)
         root.mainloop()
 
     except ValueError as e:

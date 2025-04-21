@@ -168,68 +168,6 @@ class HistoryTree:
             node = predecessors[0] if predecessors else None
         return list(reversed(path))  # A gyökértől induló sorrendben
 
-    def draw_tree(self, num, ax):
-        try:
-            # Create a consistent layout
-            pos = {}
-            levels = defaultdict(list)
-            
-            # Group nodes by level
-            for node, data in self.G.nodes(data=True):
-                levels[data['level']].append(node)
-            
-            # Assign positions level by level
-            for level, nodes in sorted(levels.items()):
-                y = -level  # Root at top (y=0), others below
-                x_spacing = 1.0 / (len(nodes) + 1)
-                for i, node in enumerate(sorted(nodes)):
-                    x = (i + 1) * x_spacing
-                    pos[node] = (x, y)
-            
-            # Ensure root is centered at top
-            if 'Root' in self.G.nodes() and 'Root' not in pos:
-                pos['Root'] = (0.5, 0)
-            
-            # Verify all nodes have positions
-            missing_positions = [node for node in self.G.nodes() if node not in pos]
-            if missing_positions:
-                print(f"Warning: Missing positions for nodes: {missing_positions}")
-                # Assign random positions to missing nodes
-                for node in missing_positions:
-                    pos[node] = (random.uniform(0,1), random.uniform(-len(levels),0))
-            
-            # Draw the graph
-            ax.set_title(f'History Tree Visualization {num}')
-            ax.axis('off')
-            
-            # Separate edge types
-            black_edges = [(u,v) for u,v,d in self.G.edges(data=True) if d.get('color') == 'black']
-            red_edges = [(u,v) for u,v,d in self.G.edges(data=True) if d.get('color') == 'red']
-            
-            # Draw elements
-            nx.draw_networkx_nodes(self.G, pos, node_size=700, node_color='lightblue', ax=ax)
-            nx.draw_networkx_edges(self.G, pos, edgelist=black_edges, edge_color='black', width=2, ax=ax)
-            nx.draw_networkx_edges(self.G, pos, edgelist=red_edges, edge_color='red', width=2, style='dashed', ax=ax)
-            
-            # Draw labels
-            node_labels = {n: d.get('label', n) for n,d in self.G.nodes(data=True)}
-            nx.draw_networkx_labels(self.G, pos, labels=node_labels, font_size=10, ax=ax)
-            
-            # Add multiplicity labels for red edges
-            red_edge_labels = {
-                (u,v): str(d.get('multiplicity', 1)) 
-                for u,v,d in self.G.edges(data=True) 
-                if d.get('color') == 'red'
-            }
-            nx.draw_networkx_edge_labels(self.G, pos, edge_labels=red_edge_labels, font_color='red', ax=ax)
-            
-            #plt.title('History Tree Visualization %i' % self.id)
-
-        except Exception as e:
-            print(f"Error drawing tree: {str(e)}")
-            print("Current nodes:", list(self.G.nodes(data=True)))
-            print("Current edges:", list(self.G.edges(data=True)))
-
     def _tree_layout(self, node, x, y, dx):
         """Recursive tree layout using only black edges for hierarchy"""
         if node not in self.G:
