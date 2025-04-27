@@ -1,24 +1,57 @@
 from collections import defaultdict
 import tkinter as tk
 from tkinter import ttk
+from tkinter import simpledialog
+from tkinter import messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import networkx as nx
 import random
+from algo import SimulationApp
 
 
 class GraphViewer:
-    def __init__(self, root, simulation_app, title):
+    def __init__(self):
+        self.start()
+        
+    def start(self):
+        root = tk.Tk()
+        root.geometry("900x700")
+        root.withdraw()
+
+        try:
+            title = "Universal self-stabilizing finite-state algorithm"
+            n = simpledialog.askinteger(title, "Number of agents:")
+            if n is None or n <= 0:
+                raise ValueError("Operation cancelled.")
+
+            num_zeros = simpledialog.askinteger(title, f"How many of the {n} agents should have the input of 0?")
+            if num_zeros is None:
+                raise ValueError("Operation cancelled.")
+            if num_zeros > n or num_zeros < 0:
+                raise ValueError("The number of zeros cannot be greater than n or less than 0.")
+
+            agents_inputs = [0] * num_zeros + [1] * (n - num_zeros)
+            random.shuffle(agents_inputs)
+
+            root.deiconify()
+            root.state("zoomed") 
+            simulationApp = SimulationApp(n, agents_inputs)
+            graphViewer = self.init_graphs(root, simulationApp, title)
+            root.mainloop()
+
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            
+    def init_graphs(self, root, simulation_app, title):
+        self.top = None
         self.simulation_app = simulation_app
         self.root = root
         root.configure(bg="white")
         self.root.title(title)
         self.graph_frames = []
         self.graph_canvases = [None] * 4  # 4 frame-hez
-
-        self.button_frame = tk.Frame(root, bg="white")
-        self.button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        self.create_refresh_button()
+        self.button_config()
 
         self.grid_frame = tk.Frame(root, bg="white")
         self.grid_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -42,7 +75,6 @@ class GraphViewer:
                     self.grid_frame.grid_rowconfigure(i, weight=1)
                     self.grid_frame.grid_columnconfigure(j, weight=1)
                 self.graph_frames.append(frame)
-
 
     def create_scrollable_frame(self, parent, title, row, column):
         labelframe = tk.LabelFrame(parent, text=title, bd=1, relief=tk.SOLID, bg="white")
@@ -78,14 +110,16 @@ class GraphViewer:
 
     def draw_graphs_in_frame(self, frame_index, graphs, is_ht=False):
         frame = self.graph_frames[frame_index]
+        window_width = self.root.winfo_width()
+        window_height = self.root.winfo_height()
 
         if self.graph_canvases[frame_index] is None:
             # Első megjelenítés
             if frame_index == 0 or frame_index == 2:
                 fig, axs = plt.subplots(1, len(graphs), figsize=(len(graphs) * 1, 2))
             else:
-                fig, axs = plt.subplots(1, len(graphs), figsize=(len(graphs) * 2.6, 4))
-                fig.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0)
+                fig, axs = plt.subplots(1, len(graphs), figsize=(window_width / 185 * len(graphs) / 4, window_height / 275))
+                fig.subplots_adjust(left=0, right=1, top=0.80, bottom=0, wspace=0)
 
             if len(graphs) == 1:
                 axs = [axs]
@@ -136,11 +170,18 @@ class GraphViewer:
         if gc.HT_list_curr:
             self.draw_graphs_in_frame(3, gc.HT_list_curr, is_ht = True)
 
+    def button_config(self):
+        self.button_frame = tk.Frame(self.root, bg="white")
+        self.button_frame.pack(side=tk.BOTTOM, fill=tk.NONE)
 
-    def create_refresh_button(self):
-        button = tk.Button(self.button_frame, text="Step", command=self.update_graphs)
-        button.pack(pady=5)
+        button_new = tk.Button(self.button_frame, text="New Simulation", command=self.restart_process)
+        button_new.grid(row=0, column=0, padx=5, pady=5)
 
+        button_step = tk.Button(self.button_frame, text="Step", command=self.update_graphs)
+        button_step.grid(row=0, column=1, padx=5, pady=5)
+        
+        button_quit = tk.Button(self.button_frame, text="Exit", command=self.quit_process)
+        button_quit.grid(row=0, column=2, padx=5, pady=5)
 
     def draw_tree(self, G, num, ax):
         try:
@@ -181,7 +222,7 @@ class GraphViewer:
             red_edges = [(u,v) for u,v,d in G.edges(data=True) if d.get('color') == 'red']
             
             # Draw elements
-            nx.draw_networkx_nodes(G, pos, node_size=700, node_color='lightblue', ax=ax)
+            nx.draw_networkx_nodes(G, pos, node_size=400, node_color='lightblue', ax=ax)
             nx.draw_networkx_edges(G, pos, edgelist=black_edges, edge_color='black', width=2, ax=ax)
             nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color='red', width=2, style='dashed', ax=ax)
             
@@ -205,10 +246,10 @@ class GraphViewer:
             print("Current edges:", list(G.edges(data=True)))
 
     def show_final_messages(self, outputs):
-        top = tk.Toplevel(self.root)
-        top.title("Results")
+        self.top = tk.Toplevel(self.root)
+        self.top.title("Results")
 
-        message_frame = tk.Frame(top, bg="white", bd=1)
+        message_frame = tk.Frame(self.top, bg="white", bd=1)
         message_frame.pack(fill=tk.BOTH, expand=True)
 
         header_style = ttk.Style()
@@ -218,18 +259,25 @@ class GraphViewer:
         ttk.Label(message_frame, text="0 freq", style="Header.TLabel").grid(row=0, column=1, padx=5, pady=5)
         ttk.Label(message_frame, text="1 freq", style="Header.TLabel").grid(row=0, column=2, padx=5, pady=5)
 
+        for col in range(3):
+            message_frame.grid_columnconfigure(col, weight=1)
+
         for i, (agent_id, freqs) in enumerate(outputs.items(), start=1):
             print(freqs)
             ttk.Label(message_frame, text=str(agent_id), font=("Helvetica", 14)).grid(row=i, column=0, padx=5, pady=2)
             ttk.Label(message_frame, text=f"{freqs.get(0, 0.0):.2f}", font=("Helvetica", 14)).grid(row=i, column=1, padx=5, pady=2)
             ttk.Label(message_frame, text=f"{freqs.get(1, 0.0):.2f}", font=("Helvetica", 14)).grid(row=i, column=2, padx=5, pady=2)
 
-        restart_button = ttk.Button(top, text="New Simulation", command=self.restart_process, style="TButton")
+        restart_button = ttk.Button(self.top, text="New Simulation", command=self.restart_process, style="TButton")
         restart_button.pack(pady=20)
 
     def restart_process(self):
-        """Az új folyamat indítása (például a szimuláció újraindítása)"""
-        print("A folyamat újraindul...")
+        if self.root.winfo_exists():
+            self.root.quit()
+            self.root.destroy()
+        self.start()
 
-
-
+    def quit_process(self):
+        if self.root.winfo_exists():
+            self.root.quit()
+            self.root.destroy()

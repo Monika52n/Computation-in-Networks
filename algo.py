@@ -1,14 +1,6 @@
 from copy import deepcopy
-from tkinter import messagebox, simpledialog
-from matplotlib.figure import Figure
 from agent import Agent
-from history_tree import HistoryTree
 import networkx as nx
-import random
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import tkinter as tk
-from draw import GraphViewer 
 from graph_collection import GraphCollection
 
 class SimulationApp:
@@ -61,32 +53,3 @@ class SimulationApp:
 
         self.graph_collection.add_next_round(deepcopy(self.G), ht_graphs)
         self.current_round += 1
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.geometry("900x700")
-    root.withdraw()
-
-    try:
-        title = "Universal self-stabilizing finite-state algorithm"
-        n = simpledialog.askinteger(title, "Number of agents:")
-        if n is None or n <= 0:
-            raise ValueError("Operation cancelled.")
-
-        num_zeros = simpledialog.askinteger(title, f"How many of the {n} agents should have the input of 0?")
-        if num_zeros is None:
-            raise ValueError("Operation cancelled.")
-        if num_zeros > n or num_zeros < 0:
-            raise ValueError("The number of zeros cannot be greater than n or less than 0.")
-
-        agents_inputs = [0] * num_zeros + [1] * (n - num_zeros)
-        random.shuffle(agents_inputs)
-
-        root.deiconify()
-        root.state("zoomed") 
-        simulationApp = SimulationApp(n, agents_inputs)
-        graphViewer = GraphViewer(root, simulationApp, title)
-        root.mainloop()
-
-    except ValueError as e:
-        messagebox.showerror("Error", str(e))
