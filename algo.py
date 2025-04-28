@@ -35,6 +35,7 @@ class SimulationApp:
         self.canvas.draw()
 
     def run_next_round(self):
+        # Az algoritmus akkor áll le, amikor minden ügynök (agent) ki tudja számolni a bemenetek gyakoriságát (compute_frequencies).
         if all(agent.done for agent in self.agents): # or self.current_round == 2*n:
             print(">>> Mindenki kész, algoritmus LEÁLL <<<")
             self.next_button.config(state=tk.DISABLED)
@@ -62,8 +63,8 @@ class SimulationApp:
 
 
 if __name__ == "__main__":
-    agents_inputs = [1, 0, 0, 0, 0, 0, 0, 0]
-    #agents_inputs = [1, 0, 0, 1]
+    #agents_inputs = [1, 0, 1, 0, 0, 1, 0, 0]
+    agents_inputs = [1, 0, 1, 1]
     n = len(agents_inputs)
 
     root = tk.Tk()

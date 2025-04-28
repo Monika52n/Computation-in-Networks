@@ -4,6 +4,7 @@ from networkx.algorithms import isomorphism
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
+import copy
 
 class HistoryTree:
     def __init__(self, root_label, input_value):
@@ -21,8 +22,9 @@ class HistoryTree:
         self.current_level = 1
         self.red_edges = defaultdict(int)
         self.id = input_value
-
-    '''def __init__(self, root_label):
+        #self.counter = 0
+       
+    """ def __init__(self, root_label):
         self.G = nx.MultiDiGraph()
         self.root = root_label
         self.G.add_nodes_from([
@@ -31,7 +33,8 @@ class HistoryTree:
         self.G.graph['Root'] = root_label
         self.bottom_node = root_label
         self.current_level = -1
-        self.red_edges = defaultdict(int)'''
+        self.red_edges = defaultdict(int)  """
+        #self.counter = 0
 
     def _get_edge_if_exists(self, from_node, to_node, color):
         edges_data = self.G.get_edge_data(from_node, to_node)
@@ -112,7 +115,26 @@ class HistoryTree:
         node_map = {}
         node_map[other_tree.G.graph['Root']] = self.G.graph['Root']
 
-        for level in range(-1, min(self.current_level, other_tree.current_level) + 1):
+        # Létrehozott másolatok
+        self_before_chop = copy.deepcopy(self)
+        other_before_chop = copy.deepcopy(other_tree)
+
+        # Piros élek összegyűjtése
+        red_edges_self = []
+        for u, v, d in self.G.edges(data=True):
+            if d.get('color') == 'red':
+                if u in self.G.nodes:
+                    red_edges_self.append((u, v, d))
+        red_edges_other = []
+        for u, v, d in other_tree.G.edges(data=True):
+            if d.get('color') == 'red':
+                if u in other_tree.G.nodes:
+                    red_edges_other.append((u, v, d))
+
+        red_edges_nr = max(len(red_edges_self), len(red_edges_other))
+
+        # Szintenként történő összevonás
+        for level in range(-1, max(self.current_level, other_tree.current_level) + 1):
             this_level_nodes = [n for n, attr in self.G.nodes(data=True) if attr['level'] == level]
             other_level_nodes = [n for n, attr in other_tree.G.nodes(data=True) if attr['level'] == level]
 
@@ -126,7 +148,6 @@ class HistoryTree:
 
                         if other_parent and other_parent in node_map:
                             this_parent = node_map[other_parent]
-
                             matching_child = self._find_child_with_label(this_parent, other_attrs['label'])
                             node_to_check_for_red_edge = None
 
@@ -134,10 +155,12 @@ class HistoryTree:
                                 node_map[other_node] = matching_child
                                 node_to_check_for_red_edge = matching_child
                             else:
-                                new_node = f"{other_node}_m"
-
+                                # Új csúcs hozzáadása
+                                new_node = self._generate_unique_node_name(other_node)
                                 if this_parent != new_node:
-                                    self.G.add_node(new_node, label=other_attrs['label'], level=other_attrs['level'])
+                                    child_level = self.G.nodes[this_parent]['level'] + 1
+
+                                    self.G.add_node(new_node, label=other_attrs['label'], level=child_level)
                                     self.G.add_edge(this_parent, new_node, color='black')
 
                                     node_map[other_node] = new_node
@@ -145,11 +168,46 @@ class HistoryTree:
                                 else:
                                     print(f"WARNING: Self-loop detected and avoided: {this_parent} -> {new_node}")
 
-                            self._combine_inbound_red_edges(node_to_check_for_red_edge, other_node, other_tree)
+                            # Piros élek összekapcsolása
+                            if node_to_check_for_red_edge is not None:
+                                self._combine_inbound_red_edges(node_to_check_for_red_edge, other_node, other_tree)
+        
+        new_bottom_node = None
+        bottom_level = max([self.G.nodes[n]['level'] for n in self.G.nodes()])  # Legmagasabb szint keresése
+    
+        # Megkeressük a legalsó szintű csúcsot
+        new_bottom_nodes = [n for n, attr in self.G.nodes(data=True) if attr['level'] == bottom_level]
+        
+        if new_bottom_nodes:
+            # Ha van legalább egy legalsó szintű csúcs, akkor az lesz az új bottom node
+            self.bottom_node = new_bottom_nodes[0]  # Válasszunk egyet a legalsó szintű csúcsok közül
+            print(f"New bottom node set: {self.G.nodes[self.bottom_node]}")
+        else:
+            print("WARNING: No bottom node found after merge!")
 
+        # Piros élek kezelése
         self._mark_interaction_with_red_edge(other_tree)
 
+        # Ellenőrizzük, hogy a piros élek nem tűntek el
+        red_edges_self_after = []
+        for u, v, d in self.G.edges(data=True):
+            if d.get('color') == 'red':
+                if u in self.G.nodes:
+                    red_edges_self_after.append((u, v, d))
+
+        print("min red edge BEFORE merge: ", red_edges_nr)
+        print("red edge AFTER merge: ", len(red_edges_self_after))
+        if len(red_edges_self_after) < red_edges_nr:
+            print("ERROR in MERGE: RED edge disappeared!!!")
+
+        # Szinkronizálás és ellenőrzés
+        if self.is_black_tree_connected(None):
+            print("error in merge")
+        if self.check_backward_black_edges():
+            print("error in merge")
+
         return node_map
+
 
     def get_path_to_root(self, node):
         path = []
@@ -331,18 +389,132 @@ class HistoryTree:
 
     def chop(self):
         if len(self.get_path_to_root(self.bottom_node)) > 2:
+            graph_before_chop = copy.deepcopy(self)
+            red_edges = []
+            for u, v, d in self.G.edges(data=True):
+                if d.get('color') == 'red':
+                    if u in self.G.nodes and self.G.nodes[u].get('level', -1) >= 1:
+                        red_edges.append((u, v, d))
+            
             self.G.remove_nodes_from(self.get_nodes_at_level(0))
 
             self._shift_nodes_by_level(1)
             self.current_level -= 1
+            
+            # Elmentett csúcsok chop után
+            """ nodes_after_chop = set(self.G.nodes)
+
+            # Piros élek visszaállítása, ha a két végpont még él
+            for u, v, edge_data in red_edges:
+                if u in nodes_after_chop and v in nodes_after_chop:
+                    # Megvizsgáljuk, van-e már ilyen piros él
+                    found = False
+                    for k in self.G[u].get(v, {}):
+                        if self.G[u][v][k].get("color") == "red":
+                            # Már van ilyen él, frissítjük a multiplicity-t
+                            self.G[u][v][k]["multiplicity"] += edge_data.get("multiplicity", 1)
+                            found = True
+                            break
+
+                    if not found:
+                        # Ha még nincs ilyen él, hozzáadjuk
+                        self.G.add_edge(u, v,
+                                        color="red",
+                                        multiplicity=edge_data.get("multiplicity", 1)) """
+
+            red_edges_after1 = []
+            for u, v, d in self.G.edges(data=True):
+                if d.get('color') == 'red':
+                    red_edges_after1.append((u, v, d))
+
+            red_edges_after1.sort()
+            red_edges.sort()
+            if red_edges != red_edges_after1:
+                print("ERROR after shift: RED edge disappeared!!!")
 
             for new_l0_node in self.get_nodes_at_level(0):
                 self.G.add_edge('Root', new_l0_node, color='black')
 
+            red_edges_after2 = []
+            for u, v, d in self.G.edges(data=True):
+                if d.get('color') == 'red':
+                    red_edges_after2.append((u, v, d))
+
+            red_edges_after2.sort()
+            red_edges.sort()
+            if red_edges != red_edges_after2:
+                print("ERROR after add_edge: RED edge disappeared!!!")
             while self._merge_all_levels():
                 pass
 
             self.current_level = self.G.nodes[self.bottom_node]['level']
+            
+            red_edges_after = []
+            for u, v, d in self.G.edges(data=True):
+                if d.get('color') == 'red':
+                    red_edges_after.append((u, v, d))
+
+            print("RED edge after chop: ", len(red_edges_after))
+            red_edges_after.sort()
+            red_edges.sort()
+            if red_edges != red_edges_after:
+                print("ERROR: RED edge disappeared!!!")
+                print("Tree before chop:")
+                print("Nodes:", list(graph_before_chop.G.nodes(data=True)))
+                print("Edges:", list(graph_before_chop.G.edges(data=True)))
+                print("Red edge before:", red_edges)
+                print("Red edge after:", red_edges_after)
+                
+            if self.is_black_tree_connected(graph_before_chop):
+                print("error in chop")
+            if self.check_backward_black_edges():
+                print("error in chop")
+
+
+    def is_black_tree_connected(self, before_chop):
+        # 1. Fekete élekből építjük a gráfot
+        black_edges = [
+            (u, v) for u, v, k, d in self.G.edges(keys=True, data=True)
+            if d.get("color") == "black"
+        ]
+        black_graph = nx.DiGraph()
+        black_graph.add_nodes_from(self.G.nodes(data=True))
+        black_graph.add_edges_from(black_edges)
+
+        # 2. Megnézzük, hogy minden nem-root csúcs elérhető-e a 'Root'-ból
+        nodes_except_root = [n for n in self.G.nodes if n != "Root"]
+
+        unreachable = [n for n in nodes_except_root if not nx.has_path(black_graph, 'Root', n)]
+
+        if unreachable:
+            print("HIBA: A következő L0 csúcsok nem elérhetők a Root-ból (fekete éleken):", unreachable)
+            print("Root is not connected to:", unreachable)
+            if before_chop is not None:
+                print("Tree before chop:")
+                print("Nodes:", list(before_chop.G.nodes(data=True)))
+                print("Edges:", list(before_chop.G.edges(data=True)))
+        return unreachable
+
+    def check_backward_black_edges(self):
+        """
+        Megvizsgálja, hogy van-e visszafelé mutató fekete él,
+        azaz olyan fekete él, ahol a forrás szintje nagyobb, mint a cél szintje.
+        """
+        invalid_edges = []
+
+        for u, v, data in self.G.edges(data=True):
+            if data.get('color') == 'black':
+                level_u = self.G.nodes[u].get('level', -2)
+                level_v = self.G.nodes[v].get('level', -2)
+                if level_u > level_v:
+                    invalid_edges.append((u, v, level_u, level_v))
+
+        if invalid_edges:
+            print("❗ Visszafelé mutató fekete élek találhatók:")
+            for u, v, lu, lv in invalid_edges:
+                print(f"  {u} (level {lu}) → {v} (level {lv})")
+
+        return invalid_edges
 
 
     '''def _safe_update_multiplicity(self, u, v, m):
@@ -377,15 +549,16 @@ class HistoryTree:
     def _combine_outbound_red_edges(self, source_node, target_node, multiplicity):
         rep_edges_data = self.G.get_edge_data(source_node, target_node)
 
-        bool_black_edges_only = True
-        for re in rep_edges_data:
-            rep_edge_data = rep_edges_data[re]
-            if rep_edge_data.get('color') == 'red':
-                self._add_red_edge(source_node, target_node, multiplicity)
-                bool_black_edges_only = False
+        if rep_edges_data is not None:
+            bool_black_edges_only = True
+            for re in rep_edges_data:
+                rep_edge_data = rep_edges_data[re]
+                if rep_edge_data.get('color') == 'red':
+                    self._add_red_edge(source_node, target_node, multiplicity)
+                    bool_black_edges_only = False
 
-        if not rep_edges_data or (rep_edges_data and bool_black_edges_only):
-            self._add_red_edge(source_node, target_node, multiplicity)
+            if not rep_edges_data or (rep_edges_data and bool_black_edges_only):
+                self._add_red_edge(source_node, target_node, multiplicity)
 
     def _switch_outbound_edges(self, from_node, to_node):
         for child in list(self.G.successors(from_node)):
@@ -489,13 +662,27 @@ class HistoryTree:
 
         sub_view['children'].sort()
         return str(sub_view)
+    
+    def _generate_unique_node_name(self, base_name):
+        #Ad egy egyedi node nevet, ha már létezik a base_name
+        suffix = "m"
+        candidate = f"{base_name}{suffix}"
+        i = 1
+        while candidate in self.G.nodes:
+            candidate = f"{base_name}{suffix * i}"
+            i += 1
+        return candidate
+
 
     def add_bottom(self, input_value):
         if len(self.G.nodes) == 1:
             self.__init__('Root', input_value)
         else:
             current_bottom_node = self.G.nodes[self.bottom_node]
-            new_bottom_node = f"{self.bottom_node}_m"
+            # new_bottom_node = f"{self.bottom_node}_m"
+            new_bottom_node = self._generate_unique_node_name(self.bottom_node)
+            """ new_bottom_node = f"N_{self.counter}"
+            self.counter += 1 """
 
             self.G.add_nodes_from([
                 (new_bottom_node, {'label': input_value, 'level': current_bottom_node['level'] + 1})
@@ -798,7 +985,7 @@ def test_chop():
     ht2.draw_tree(2)
 
 # Run the test
-#test_chop()
+# test_chop()
 
 
 def test_merge_trees2():
@@ -941,3 +1128,188 @@ def test_path_to_root():
     print('Bottom node level: ', ht2.G.nodes[ht2.bottom_node]['level'])
 
 #test_path_to_root()
+
+# test chop
+def test_chop_complex_graph():
+    ht = HistoryTree("Root")
+
+    # Csomópontok hozzáadása
+    ht.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('N_0', {'label': 0, 'level': 0}),
+        ('N_0_m', {'label': 0, 'level': 1}),
+        ('N_0_m_m', {'label': 0, 'level': 2}),
+        ('N_0_m_m_m', {'label': 0, 'level': 3}),
+        ('N_0_m_m_m_m', {'label': 0, 'level': 4}),
+        ('N_1_m_m_m_m_m_m', {'label': 1, 'level': 0}),
+        ('N_1_m_m_m_m_m_m_m', {'label': 1, 'level': 3}),
+        ('N_1_m_m_m_m_m_m_m_m_m', {'label': 1, 'level': 2}),
+        ('N_1_m_m_m_m_m_m_m_m_m_m_m', {'label': 1, 'level': 1})
+    ])
+
+    # Élek (fekete + piros) hozzáadása
+    ht.G.add_edges_from([
+        ('Root', 'N_0', {'color': 'black'}),
+        ('Root', 'N_1_m_m_m_m_m_m', {'color': 'black'}),
+        ('N_0', 'N_0_m', {'color': 'black'}),
+        ('N_0_m', 'N_0_m_m', {'color': 'black'}),
+        ('N_0_m_m', 'N_0_m_m_m', {'color': 'black'}),
+        ('N_0_m_m_m', 'N_0_m_m_m_m', {'color': 'black'}),
+
+        ('N_0', 'N_1_m_m_m_m_m_m_m', {'color': 'red', 'multiplicity': 2}),
+        ('N_0', 'N_1_m_m_m_m_m_m_m_m_m', {'color': 'red', 'multiplicity': 1}),
+        ('N_0_m', 'N_1_m_m_m_m_m_m_m', {'color': 'red', 'multiplicity': 1}),
+        ('N_1_m_m_m_m_m_m', 'N_0', {'color': 'red', 'multiplicity': 2}),
+        ('N_1_m_m_m_m_m_m', 'N_0_m_m', {'color': 'red', 'multiplicity': 1}),
+        ('N_1_m_m_m_m_m_m', 'N_1_m_m_m_m_m_m_m_m_m', {'color': 'red', 'multiplicity': 2}),
+        ('N_1_m_m_m_m_m_m_m', 'N_0', {'color': 'red', 'multiplicity': 1}),
+        ('N_1_m_m_m_m_m_m', 'N_1_m_m_m_m_m_m_m', {'color': 'black'}),
+        ('N_1_m_m_m_m_m_m_m', 'N_1_m_m_m_m_m_m_m_m_m', {'color': 'black'}),
+        ('N_1_m_m_m_m_m_m_m_m_m', 'N_1_m_m_m_m_m_m_m_m_m_m_m', {'color': 'black'}),
+    ])
+
+    # Bottom node és szint beállítása
+    ht.bottom_node = 'N_0_m_m_m_m'
+    ht.current_level = 4
+
+    # Chop előtt
+    print("Before chop:")
+    #ht.draw_tree(1)
+
+    # Chop meghívása
+    ht.chop()
+
+    # Chop után
+    print("After chop:")
+    ht.draw_tree(2)
+
+#test_chop_complex_graph()
+
+def test_merge_trees_on_complex_graphs():
+    # --- Setup 1 ---
+    tree1 = HistoryTree("Root")
+    tree1.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('N_1', {'label': 1, 'level': 0}),
+        ('N_1m', {'label': 1, 'level': 1}),
+    ])
+    tree1.G.add_edges_from([
+        ('Root', 'N_1', {'color': 'black'}),
+        ('N_1', 'N_1m', {'color': 'black'}),
+    ])
+    tree1.bottom_node = 'N_1m'
+    tree1.current_level = 1
+
+    tree2 = HistoryTree("Root")
+    tree2.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('N_1mmmmmm', {'label': 1, 'level': 0}),
+        ('N_1mmmmmmm', {'label': 1, 'level': 1}),
+        ('N_1mmmmmmmm', {'label': 1, 'level': 2}),
+        ('N_1mmmmmmmmm', {'label': 1, 'level': 3}),
+        ('N_1mmmmmmmmmm', {'label': 1, 'level': 4}),
+        ('N_1mmmmmmmmmmm', {'label': 1, 'level': 5}),
+        ('N_1mmmmmmmmmmmm', {'label': 1, 'level': 6}),
+        ('N_0mmmmmm', {'label': 0, 'level': 0}),
+        ('N_0mmmmmmm', {'label': 0, 'level': 1}),
+        ('N_0mmmmmmmm', {'label': 0, 'level': 2}),
+    ])
+    tree2.G.add_edges_from([
+        ('Root', 'N_1mmmmmm', {'color': 'black'}),
+        ('N_1mmmmmm', 'N_1mmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmm', 'N_1mmmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmmm', 'N_1mmmmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmmmm', 'N_1mmmmmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmmmmm', 'N_1mmmmmmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmmmmmm', 'N_1mmmmmmmmmmmm', {'color': 'black'}),
+
+        ('Root', 'N_0mmmmmm', {'color': 'black'}),
+        ('N_0mmmmmm', 'N_0mmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmm', 'N_0mmmmmmmm', {'color': 'black'}),
+
+        ('N_1mmmmmmmm', 'N_1mmmmmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+        ('N_0mmmmmmmm', 'N_1mmmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+        ('N_0mmmmmmmm', 'N_1mmmmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+    ])
+    tree2.bottom_node = 'N_1mmmmmmmmmmmm'
+    tree2.current_level = 6
+
+    print("\nBEFORE MERGE:")
+   # tree1.draw_tree(1)
+    #tree2.draw_tree(2)
+
+    # --- Merge ---
+    tree1.merge_trees(tree2)
+
+    print("\nAFTER MERGE:")
+    tree1.draw_tree(1)
+
+
+#test_merge_trees_on_complex_graphs()
+
+def test_merge_trees_second_case():
+    # --- Self tree ---
+    self_tree = HistoryTree("Root")
+    self_tree.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('N_1', {'label': 1, 'level': 0}),
+        ('N_1m', {'label': 1, 'level': 1}),
+        ('N_1mm', {'label': 1, 'level': 2}),
+        ('N_0mmmmmmm', {'label': 0, 'level': 0}),
+        ('N_0mmmmmmmm', {'label': 0, 'level': 1}),
+    ])
+    self_tree.G.add_edges_from([
+        ('Root', 'N_1', {'color': 'black'}),
+        ('N_1', 'N_1m', {'color': 'black'}),
+        ('N_1m', 'N_1mm', {'color': 'black'}),
+        ('Root', 'N_0mmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmm', 'N_0mmmmmmmm', {'color': 'black'}),
+    ])
+    self_tree.bottom_node = 'N_1mm'
+    self_tree.current_level = 2
+
+    # --- Other tree ---
+    other_tree = HistoryTree("Root")
+    other_tree.G.add_nodes_from([
+        ('Root', {'label': 'Root', 'level': -1}),
+        ('N_0mmmmm', {'label': 0, 'level': 0}),
+        ('N_0mmmmmm', {'label': 0, 'level': 1}),
+        ('N_0mmmmmmm', {'label': 0, 'level': 2}),
+        ('N_0mmmmmmmm', {'label': 0, 'level': 3}),
+        ('N_0mmmmmmmmm', {'label': 0, 'level': 4}),
+        ('N_0mmmmmmmmmm', {'label': 0, 'level': 5}),
+        ('N_0mmmmmmmmmmm', {'label': 0, 'level': 6}),
+        ('N_1mmmmmmm', {'label': 1, 'level': 0}),
+        ('N_1mmmmmmmm', {'label': 1, 'level': 1}),
+        ('N_1mmmmmmmmm', {'label': 1, 'level': 2}),
+    ])
+    other_tree.G.add_edges_from([
+        ('Root', 'N_0mmmmm', {'color': 'black'}),
+        ('N_0mmmmm', 'N_0mmmmmm', {'color': 'black'}),
+        ('N_0mmmmmm', 'N_0mmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmm', 'N_0mmmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmmm', 'N_0mmmmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmmmm', 'N_0mmmmmmmmmm', {'color': 'black'}),
+        ('N_0mmmmmmmmmm', 'N_0mmmmmmmmmmm', {'color': 'black'}),
+
+        ('Root', 'N_1mmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmm', 'N_1mmmmmmmm', {'color': 'black'}),
+        ('N_1mmmmmmmm', 'N_1mmmmmmmmm', {'color': 'black'}),
+
+        ('N_0mmmmmmm', 'N_0mmmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+        ('N_1mmmmmmmmm', 'N_0mmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+        ('N_1mmmmmmmmm', 'N_0mmmmmmmmmmm', {'color': 'red', 'multiplicity': 1}),
+    ])
+    other_tree.bottom_node = 'N_0mmmmmmmmmmm'
+    other_tree.current_level = 6
+
+    print("\nBEFORE MERGE (2nd case):")
+    self_tree.draw_tree(1)
+    other_tree.draw_tree(2)
+
+    self_tree.merge_trees(other_tree)
+
+    print("\nAFTER MERGE (2nd case):")
+    self_tree.draw_tree(2)
+
+#test_merge_trees_second_case()
