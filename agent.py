@@ -13,11 +13,16 @@ class Agent:
         self.myHT = HistoryTree('Root', self.input_value)
         self.myHT_new = deepcopy(self.myHT)
         self.done = False
+        self.output_m = None
 
     def input(self):
         return self.input_value
+    
+    def get_output(self):
+        return self.output_m
 
     def output(self, message):
+        self.output_m = message
         print(f"Agent output: {message}")
 
     def send_to_neighbor(self):
@@ -213,7 +218,10 @@ class Agent:
             self.output(frequencies)
             self.ready = True
         else:
-            self.output([(self.input_value, 100)])
+            if self.input_value == 0:
+                self.output({0: 1, 1: 0})
+            elif self.input_value == 1:
+                self.output({0: 0, 1: 1})
             self.ready = False
 
         # 9. Ha mindenki készen van, leállhatunk
