@@ -155,7 +155,6 @@ class GraphViewer:
 
     def update_graphs(self):
         if self.simulation_app.get_done():
-            self.show_final_messages(self.simulation_app.get_outputs())
             return
         
         self.simulation_app.run_next_round()
@@ -169,6 +168,9 @@ class GraphViewer:
             self.draw_graphs_in_frame(2, [gc.G_curr])
         if gc.HT_list_curr:
             self.draw_graphs_in_frame(3, gc.HT_list_curr, is_ht = True)
+
+        if self.simulation_app.get_done():
+            self.show_final_messages(self.simulation_app.get_outputs())
 
     def button_config(self):
         self.button_frame = tk.Frame(self.root, bg="white")
