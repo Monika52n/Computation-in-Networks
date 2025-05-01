@@ -36,6 +36,9 @@ class HistoryTree:
         self.red_edges = defaultdict(int)  """
         #self.counter = 0
 
+    def get_tree(self):
+        return self.G
+
     def _get_edge_if_exists(self, from_node, to_node, color):
         edges_data = self.G.get_edge_data(from_node, to_node)
         if edges_data is not None:

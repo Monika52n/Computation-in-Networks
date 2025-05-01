@@ -5,7 +5,6 @@ from copy import deepcopy
 from scipy.optimize import nnls
 
 class Agent:
-
     def __init__(self, n, input_value):
         self.n = n  # Number of agents in the network
         self.input_value = input_value  # Agent's input

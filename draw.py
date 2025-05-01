@@ -118,8 +118,8 @@ class GraphViewer:
             if frame_index == 0 or frame_index == 2:
                 fig, axs = plt.subplots(1, len(graphs), figsize=(len(graphs) * 1, 2))
             else:
-                fig, axs = plt.subplots(1, len(graphs), figsize=(window_width / 185 * len(graphs) / 4, window_height / 275))
-                fig.subplots_adjust(left=0, right=1, top=0.80, bottom=0, wspace=0)
+                fig, axs = plt.subplots(1, len(graphs), figsize=(window_width / 185 * len(graphs) / 4, window_height / 250))
+                fig.subplots_adjust(left=0, right=1, top=0.95, bottom=0, wspace=0)
 
             if len(graphs) == 1:
                 axs = [axs]
@@ -214,7 +214,7 @@ class GraphViewer:
                     pos[node] = (random.uniform(0,1), random.uniform(-len(levels),0))
             
             # Draw the graph
-            ax.set_title(f'History Tree of {num}')
+            ax.set_title(f'History Tree of {num}', fontsize=8, pad=0)
             ax.axis('off')
             
             # Separate edge types
@@ -222,13 +222,16 @@ class GraphViewer:
             red_edges = [(u,v) for u,v,d in G.edges(data=True) if d.get('color') == 'red']
             
             # Draw elements
-            nx.draw_networkx_nodes(G, pos, node_size=400, node_color='lightblue', ax=ax)
-            nx.draw_networkx_edges(G, pos, edgelist=black_edges, edge_color='black', width=2, ax=ax)
-            nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color='red', width=2, style='dashed', ax=ax)
+            nx.draw_networkx_nodes(G, pos, node_size=75, node_color='lightblue', ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=black_edges, edge_color='black', width=1, ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color='red', width=1, style='dashed', ax=ax)
             
             # Draw labels
-            node_labels = {n: d.get('label', n) for n,d in G.nodes(data=True)}
-            nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10, ax=ax)
+            node_labels = {
+                n: ('R' if n == 'Root' else d.get('label', n)) 
+                for n, d in G.nodes(data=True)
+            }
+            nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=6, ax=ax)
             
             # Add multiplicity labels for red edges
             red_edge_labels = {
@@ -236,9 +239,9 @@ class GraphViewer:
                 for u,v,d in G.edges(data=True) 
                 if d.get('color') == 'red'
             }
-            nx.draw_networkx_edge_labels(G, pos, edge_labels=red_edge_labels, font_color='red', ax=ax)
-            
-            #plt.title('History Tree Visualization %i' % self.id)
+            nx.draw_networkx_edge_labels(G, pos, edge_labels=red_edge_labels, font_color='red', ax=ax, font_size=6)
+
+            ax.margins(x=0.05, y=0)
 
         except Exception as e:
             print(f"Error drawing tree: {str(e)}")
