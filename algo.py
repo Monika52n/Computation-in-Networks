@@ -17,6 +17,7 @@ class SimulationApp:
             G = nx.erdos_renyi_graph(self.n, p=0.8)
             if nx.is_connected(G):
                 self.G = G
+                return 
     
     def get_graph_collection(self):
         return self.graph_collection
