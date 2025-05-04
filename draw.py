@@ -261,17 +261,16 @@ class GraphViewer:
         header_style.configure("Header.TLabel", font=("Helvetica", 16, "bold"))
 
         ttk.Label(message_frame, text="Agent", style="Header.TLabel").grid(row=0, column=0, padx=5, pady=5)
-        ttk.Label(message_frame, text="0 freq", style="Header.TLabel").grid(row=0, column=1, padx=5, pady=5)
-        ttk.Label(message_frame, text="1 freq", style="Header.TLabel").grid(row=0, column=2, padx=5, pady=5)
+        ttk.Label(message_frame, text="Freq input", style="Header.TLabel").grid(row=0, column=1, padx=5, pady=5)
 
-        for col in range(3):
+        for col in range(2):
             message_frame.grid_columnconfigure(col, weight=1)
 
         for i, (agent_id, freqs) in enumerate(outputs.items(), start=1):
             print(freqs)
             ttk.Label(message_frame, text=str(agent_id), font=("Helvetica", 14)).grid(row=i, column=0, padx=5, pady=2)
-            ttk.Label(message_frame, text=f"{freqs.get(0, 0.0):.2f}", font=("Helvetica", 14)).grid(row=i, column=1, padx=5, pady=2)
-            ttk.Label(message_frame, text=f"{freqs.get(1, 0.0):.2f}", font=("Helvetica", 14)).grid(row=i, column=2, padx=5, pady=2)
+            freq = 0 if freqs.get(0, 0.0) > freqs.get(1, 0.0) else 1
+            ttk.Label(message_frame, text=f"{freq}", font=("Helvetica", 14)).grid(row=i, column=1, padx=5, pady=2)
 
         restart_button = ttk.Button(self.top, text="New Simulation", command=self.restart_process, style="TButton")
         restart_button.pack(pady=20)

@@ -217,10 +217,6 @@ class Agent:
             self.output(frequencies)
             self.ready = True
         else:
-            if self.input_value == 0:
-                self.output({0: 1, 1: 0})
-            elif self.input_value == 1:
-                self.output({0: 0, 1: 1})
             self.ready = False
 
         # 9. Ha mindenki készen van, leállhatunk
