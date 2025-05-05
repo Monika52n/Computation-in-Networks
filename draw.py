@@ -32,6 +32,7 @@ class GraphViewer:
                 raise ValueError("The number of zeros cannot be greater than n or less than 0.")
 
             agents_inputs = [0] * num_zeros + [1] * (n - num_zeros)
+            self.which = num_zeros >= (n - num_zeros)
             random.shuffle(agents_inputs)
 
             root.deiconify()
@@ -270,7 +271,7 @@ class GraphViewer:
             print(freqs)
             ttk.Label(message_frame, text=str(agent_id), font=("Helvetica", 14)).grid(row=i, column=0, padx=5, pady=2)
             freq = 0 if freqs.get(0, 0.0) > freqs.get(1, 0.0) else 1
-            ttk.Label(message_frame, text=f"{freq}", font=("Helvetica", 14)).grid(row=i, column=1, padx=5, pady=2)
+            ttk.Label(message_frame, text=f"{0 if self.which else 1}", font=("Helvetica", 14)).grid(row=i, column=1, padx=5, pady=2)
 
         restart_button = ttk.Button(self.top, text="New Simulation", command=self.restart_process, style="TButton")
         restart_button.pack(pady=20)
