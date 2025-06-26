@@ -38,6 +38,8 @@ An algorithm that recovers from temporary faults automatically, reaching correct
 ## Implementation
 We used Python for the implementation, leveraging several libraries to build the application. The graphical user interface was created with tkinter and its extensions (ttk, simpledialog, and messagebox) for user interaction. For visualization, we used matplotlib together with FigureCanvasTkAgg to embed plots inside the GUI. To handle network structures like history trees, we utilized the networkx library. The application follows a model-view architecture, separating data management from the user interface to maintain clear and modular code.
 
+## Structure
+
 | Module  | Description                                                                                     |
 |--------------|-------------------------------------------------------------------------------------------------|
 | Agent        | Represents an agent with input and history tree; exchanges messages, updates tree, computes outputs until stable. |
