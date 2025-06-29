@@ -38,6 +38,37 @@ An algorithm that recovers from temporary faults automatically, reaching correct
 ## Implementation
 We used Python for the implementation, leveraging several libraries to build the application. The graphical user interface was created with tkinter and its extensions (ttk, simpledialog, and messagebox) for user interaction. For visualization, we used matplotlib together with FigureCanvasTkAgg to embed plots inside the GUI. To handle network structures like history trees, we utilized the networkx library. The application follows a model-view architecture, separating data management from the user interface to maintain clear and modular code.
 
+### Input
+At the start of the simulation, the program asks the user to input two values:
+1. The number of agents in the network.
+![input-agent-num.png](documentation/assets/input-agent-num.png)
+2. How many of these agents should have an initial input value of 0.
+![input-0.png](documentation/assets/input-0.png)
+
+The remaining agents will have their input value set to 1. This input setup initializes the agents’ states and prepares them for the execution of the algorithm.
+
+### User Interface
+The graphical user interface is divided into four main panels, each displaying a different aspect of the algorithm’s state during simulation:
+
++ **Current Network Graph**:
+Displays the current topology of the agent network. Each node represents an agent, and the edges show active communication links for this round.
+
++ **Previous Network Graph**:
+Shows the network topology from the previous round. This allows users to observe how the network changes over time in a dynamic setting.
+
++ **Current History Trees**:
+Displays the updated history trees after the current round. These show how each agent integrates new information from its neighbors.
+
++ **Previous History Trees**:
+Visualizes each agent’s history tree from the previous round. This allows comparison between consecutive rounds to observe how the local views evolve.
+
+![appearance.png](documentation/assets/appearance.png)
+
+### Result Display
+Once the algorithm has stabilized (i.e. no further changes occur in the agents’ history trees and outputs), a pop-up result panel appears. This dialog summarizes the final computed output of each agent.
+
+![result.png](documentation/assets/result.png)
+
 ## Structure
 
 | Module  | Description                                                                                     |
