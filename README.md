@@ -41,9 +41,12 @@ We used Python for the implementation, leveraging several libraries to build the
 ### Input
 At the start of the simulation, the program asks the user to input two values:
 1. The number of agents in the network.
-![input-agent-num.png](documentation/assets/input-agent-num.png)
+
+    ![input-agent-num.png](documentation/assets/input-agent-num.png)
+
 2. How many of these agents should have an initial input value of 0.
-![input-0.png](documentation/assets/input-0.png)
+
+    ![input-0.png](documentation/assets/input-0.png)
 
 The remaining agents will have their input value set to 1. This input setup initializes the agents’ states and prepares them for the execution of the algorithm.
 
