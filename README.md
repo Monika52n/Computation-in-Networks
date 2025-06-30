@@ -26,8 +26,12 @@ They represent the network’s temporal changes as a tree. The root is the start
 ### Chop Operation
 Removes the lowest tree level to discard old data, then merges identical nodes to avoid duplicates, helping stabilize the algorithm.
 
+![chop.png](documentation/assets/chop.png)
+
 ### Merge Operation
 Combines identical nodes from two trees and adds new nodes so agents’ views synchronize.
+
+![merge.png](documentation/assets/merge.png)
 
 ### Counting Level
 A tree level where each node has exactly one child. From this level, red edges allow calculation of input frequencies.
