@@ -1,4 +1,7 @@
 # Universal Finite-State and Self-Stabilizing Computation in Anonymous Dynamic Networks
+
+This project is based on the algorithm described in the paper [**Universal Finite-State and Self-Stabilizing Computation in Anonymous Dynamic Networks**](https://drops.dagstuhl.de/storage/00lipics/lipics-vol324-opodis2024/LIPIcs.OPODIS.2024.10/LIPIcs.OPODIS.2024.10.pdf) by Giuseppe A. Di Luna and Giovanni Viglietta, OPODIS 2024.
+
 ## Introduction
 
 This algorithm addresses the challenge of computing a global function in an anonymous and dynamic network, where agents (nodes) have no unique identifiers, and the network connections can change unpredictably over time. Traditional approaches either require infinite memory or cannot guarantee explicit termination without knowing the number of agents.
